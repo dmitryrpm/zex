@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package zex;
+
+// Interface exported by the server.
+service Zex {
+    rpc Register(Service) returns (Empty) {}
+    rpc Pipeline(stream Cmd) returns (Pid) {}
+    rpc Subscribe(Pid) returns (Empty) {}
+    //rpc RunPipeline(Pid) returns (Empty) {}
+}
+
+// Interface serivice, this is add service to zex
+message Service {
+    string Name=1; // Uniq ID
+    string Addr=2; // Service address
+}
+
+// Enum status commands
+enum CmdType {
+    INVOKE = 0;
+    RUN = 1;
+}
+
+// Interface Commad, proxy command wrapping to pipeline to services
+message Cmd {
+    CmdType Type = 1;
+    string  Path = 2;
+    bytes   Body = 3;
+}
+
+// Pid pipeline group
+message Pid {
+    string ID = 1;
+}
+
+// Empty msg
+message Empty {}
+
+// ID
+message ID {
+    string ID = 1;
+}
+
+
+
+
+
+
