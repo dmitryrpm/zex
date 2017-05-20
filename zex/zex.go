@@ -1,18 +1,15 @@
 package main
 
 import (
-	"flag"
+	"io"
 	"net"
 	"fmt"
-	"io"
-	_ "os/exec"
+	"flag"
+	"github.com/satori/go.uuid"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	pb "github.com/zex/zex/proto"
-	_ "github.com/golang/protobuf/proto"
 	"google.golang.org/grpc/grpclog"
-
-	_ "text/template/parse"
 )
 
 var (
@@ -21,6 +18,7 @@ var (
 
 type ZexServer struct {
 	RegisterServices   map[string]*pb.Service
+	PipelineInfo map[string][]*pb.Cmd
 }
 
 // Register service interface impl
@@ -32,21 +30,18 @@ func (s *ZexServer) Register(ctx context.Context, service *pb.Service) (*pb.Empt
 }
 
 // Pipeline service interface impl
-func (s *ZexServer) Pipeline(stream pb.Zex_PipelineServer) (error) { //(*pb.Pid, error) {
+func (s *ZexServer) Pipeline(stream pb.Zex_PipelineServer) (error)  {
 	grpclog.Printf("listen stream pipeline")
 
-	//gen_uuid, err := exec.Command("uuidgen").Output()
-	//if err != nil {
-	//	grpclog.Fatal(err)
-	//}
-	//uuid := pb.Pid{string(gen_uuid)}
+	uuid4 := uuid.NewV4().String()
+
+	s.PipelineInfo[string(uuid4)] = make([]*pb.Cmd, 0, 5)
 
 	for {
 		cmd, err := stream.Recv()
 		if err == io.EOF {
-			grpclog.Printf("close stream")
-			//return &pb.Pid{"123"}, nil
-			//return &pb.Empty{}, nil
+			grpclog.Printf("close stream, %s", s.PipelineInfo)
+			stream.SendAndClose(&pb.Pid{string(uuid4)})
 			return nil
 		}
 
@@ -54,23 +49,27 @@ func (s *ZexServer) Pipeline(stream pb.Zex_PipelineServer) (error) { //(*pb.Pid,
 			grpclog.Fatalf("%v.Pipeline(_) = _, %v", cmd, err)
 		} else {
 			grpclog.Println("Add cmd to pipeline", cmd)
+			s.PipelineInfo[string(uuid4)] = append(s.PipelineInfo[string(uuid4)], cmd)
 		}
 	}
 
-	//return &pb.Pid{"123"}, nil
-	//return &pb.Empty{}, nil
 	return nil
 }
 
 // Subscribe service interface impl
 func (s *ZexServer) Subscribe (ctx context.Context, pid *pb.Pid) (*pb.Empty, error) {
-	grpclog.Printf("Check pipeline pid %s", pid.ID)
+	grpclog.Printf("Start Subscribe uuid %s", pid.ID)
+
+
+
 	return &pb.Empty{}, nil
 }
 
 // Run pipeline service interface
 func (s *ZexServer) RunPipeline (ctx context.Context, pid *pb.Pid) (*pb.Empty, error) {
-	grpclog.Printf("Start pipleline pid %s")
+	grpclog.Printf("Start RunPipeline uuid %s", pid)
+	delete(s.PipelineInfo, string(pid.ID))
+	grpclog.Printf("PipelineInfo, %s", s.PipelineInfo)
 	return &pb.Empty{}, nil
 }
 
@@ -84,6 +83,7 @@ func main() {
 	grpcServer := grpc.NewServer(opts...)
 	zs := new(ZexServer)
 	zs.RegisterServices = make(map[string]*pb.Service)
+	zs.PipelineInfo = make(map[string][]*pb.Cmd)
 	pb.RegisterZexServer(grpcServer, zs)
 	grpcServer.Serve(tcp_connect)
 }

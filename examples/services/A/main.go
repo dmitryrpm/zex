@@ -49,13 +49,19 @@ func main() {
 		grpclog.Fatalf("%v.Send(%v) = %v", stream, cmd, err)
 	}
 
-	ok, err := stream.CloseAndRecv()
+	uuid, err := stream.CloseAndRecv()
 	if err == io.EOF {
 		grpclog.Printf("close stream")
 	} else if err != nil {
 		grpclog.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
+		return
 	}
-	grpclog.Printf("Pipeline close: %v", ok)
+	grpclog.Printf("Pipeline close: %v", uuid)
+
+	_, err_run := client.RunPipeline(context.Background(), uuid)
+	if err_run != nil {
+		grpclog.Fatalf("%v.Pipeline(_) = _, %v", client, err)
+	}
 
 
 
