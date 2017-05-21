@@ -9,7 +9,10 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	pb "github.com/zex/zex/proto"
+	//rpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
 	"google.golang.org/grpc/grpclog"
+	"github.com/golang/protobuf/ptypes/any"
+	pstruct "github.com/golang/protobuf/ptypes/struct"
 )
 
 var (
@@ -68,6 +71,26 @@ func (s *ZexServer) Subscribe (ctx context.Context, pid *pb.Pid) (*pb.Empty, err
 // Run pipeline service interface
 func (s *ZexServer) RunPipeline (ctx context.Context, pid *pb.Pid) (*pb.Empty, error) {
 	grpclog.Printf("Start RunPipeline uuid %s", pid)
+	grpclog.Println("connect to host localhost")
+	conn, err := grpc.Dial("127.0.0.1:9999", grpc.WithInsecure())
+	if err != nil {
+		grpclog.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+
+	var (
+		in = &pstruct.Struct{
+			Fields: make(map[string]*pstruct.Value, 0),
+		}
+		out = &any.Any{}
+	)
+	method := fmt.Sprintf("/%s.%s/%s", "A", "A", "CallA")
+	err = grpc.Invoke(context.Background(), method, in, out, conn)
+	if err != nil {
+		println(`grpc.Invoke`, err.Error())
+	}
+	println(`out:`, out.String())
+
 	delete(s.PipelineInfo, string(pid.ID))
 	grpclog.Printf("PipelineInfo, %s", s.PipelineInfo)
 	return &pb.Empty{}, nil
@@ -81,9 +104,11 @@ func main() {
 	}
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
+
 	zs := new(ZexServer)
 	zs.RegisterServices = make(map[string]*pb.Service)
 	zs.PipelineInfo = make(map[string][]*pb.Cmd)
+
 	pb.RegisterZexServer(grpcServer, zs)
 	grpcServer.Serve(tcp_connect)
 }

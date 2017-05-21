@@ -6,12 +6,15 @@ import (
 	"google.golang.org/grpc"
 	_ "google.golang.org/grpc/credentials"
 	pb "github.com/zex/zex/proto"
+	lpb "github.com/zex/examples/services/A/proto"
 	"google.golang.org/grpc/grpclog"
-	"io"
+	"net"
+	"google.golang.org/grpc/reflection"
 )
 
 var (
-	serverAddr = flag.String("server_addr", "127.0.0.1:10000", "The server address in the format of host:port")
+	zexServerAddr = flag.String("zex_server_addr", "127.0.0.1:10000", "Zex server in the format of host:port")
+	serverAddr = flag.String("server_addr", "127.0.0.1:9999", "The local server address in the format of host:port")
 )
 
 // Registry service to Zex
@@ -24,45 +27,59 @@ func registerZex(client pb.ZexClient, service *pb.Service) {
 	grpclog.Println(zex)
 }
 
+type AServer struct {}
+
+func (s *AServer) CallA (ctx context.Context, empty *lpb.Empty) (*lpb.Empty, error) {
+	grpclog.Printf("Call service A.%s with empty: ", empty)
+	return &lpb.Empty{}, nil
+}
+
+func (s *AServer) CallB (ctx context.Context, empty *lpb.Empty) (*lpb.Empty, error) {
+	grpclog.Printf("Call service A.%s with empty: ", empty)
+	return &lpb.Empty{}, nil
+}
+
+func (s *AServer) CallC (ctx context.Context, empty *lpb.Empty) (*lpb.Empty, error) {
+	grpclog.Printf("Call service A.%s with empty: ", empty)
+	return &lpb.Empty{}, nil
+}
+
 func main() {
 	flag.Parse()
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithInsecure())
-	conn, err := grpc.Dial(*serverAddr, opts...)
+
+	grpclog.Println("registering to Zex")
+	conn, err := grpc.Dial(*zexServerAddr, opts...)
 	if err != nil {
 		grpclog.Fatalf("fail to dial: %v", err)
 	}
-	defer conn.Close()
-	// Init service client
 	client := pb.NewZexClient(conn)
-
 	registerZex(client, &pb.Service{Name: "A", Addr: *serverAddr})
+	grpclog.Println("registed... close connection")
+	conn.Close()
 
-	grpclog.Printf("Start send pipeline task to in Zex")
-	stream, err := client.Pipeline(context.Background())
+	grpclog.Println("starting local service in ", serverAddr)
+	tcp_connect, err := net.Listen("tcp", *serverAddr)
 	if err != nil {
-		grpclog.Fatalf("%v.Pipeline(_) = _, %v", client, err)
+		grpclog.Fatalf("failed to listen: %v", err)
 	}
+	var server_opts []grpc.ServerOption
+	grpcServer := grpc.NewServer(server_opts...)
 
-	cmd := pb.Cmd{pb.CmdType(1),"1",[]byte("Body")}
-	if err := stream.Send(&cmd); err != nil {
-		grpclog.Fatalf("%v.Send(%v) = %v", stream, cmd, err)
-	}
+	my_service := new(AServer)
+	lpb.RegisterAServer(grpcServer, my_service)
+	reflection.Register(grpcServer)
+	grpcServer.Serve(tcp_connect)
 
-	uuid, err := stream.CloseAndRecv()
-	if err == io.EOF {
-		grpclog.Printf("close stream")
-	} else if err != nil {
-		grpclog.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
-		return
-	}
-	grpclog.Printf("Pipeline close: %v", uuid)
 
-	_, err_run := client.RunPipeline(context.Background(), uuid)
-	if err_run != nil {
-		grpclog.Fatalf("%v.Pipeline(_) = _, %v", client, err)
-	}
+	//grpcServer := grpc.NewServer()
 
 
 
+
+	//pb.RegisterYourOwnServer(grpcServer, &my_service)
+	// Register reflection service on gRPC server.
+	//reflection.Register(grpcServer)
+	//grpcServer.Serve(tcp_connect)
 }

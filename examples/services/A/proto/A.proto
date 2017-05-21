@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package A;
+
+// Interface exported by the server.
+service A {
+    rpc CallA(Empty) returns (Empty) {}
+    rpc CallB(Empty) returns (Empty) {}
+    rpc CallC(Empty) returns (Empty) {}
+}
+
+// Empty msg
+message Empty {}
+
+
+
+
+
