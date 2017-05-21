@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc/grpclog"
 	"github.com/golang/protobuf/ptypes/any"
 	pstruct "github.com/golang/protobuf/ptypes/struct"
+	_ "time"
 )
 
 var (
@@ -72,28 +73,41 @@ func (s *ZexServer) Subscribe (ctx context.Context, pid *pb.Pid) (*pb.Empty, err
 func (s *ZexServer) RunPipeline (ctx context.Context, pid *pb.Pid) (*pb.Empty, error) {
 	grpclog.Printf("Start RunPipeline uuid %s", pid)
 	grpclog.Println("connect to host localhost")
+
 	conn, err := grpc.Dial("127.0.0.1:9999", grpc.WithInsecure())
 	if err != nil {
 		grpclog.Fatalf("did not connect: %v", err)
 	}
 	defer conn.Close()
 
-	var (
-		in = &pstruct.Struct{
-			Fields: make(map[string]*pstruct.Value, 0),
-		}
-		out = &any.Any{}
-	)
-	method := fmt.Sprintf("/%s.%s/%s", "A", "A", "CallA")
-	err = grpc.Invoke(context.Background(), method, in, out, conn)
-	if err != nil {
-		println(`grpc.Invoke`, err.Error())
-	}
-	println(`out:`, out.String())
+	for {
+		select {
+		case <-ctx.Done():
+			grpclog.Println("Context cancel")
+			return &pb.Empty{}, nil
+		default:
+			grpclog.Println("start LOOP")
 
-	delete(s.PipelineInfo, string(pid.ID))
-	grpclog.Printf("PipelineInfo, %s", s.PipelineInfo)
-	return &pb.Empty{}, nil
+			var (
+				in = &pstruct.Struct{
+					Fields: make(map[string]*pstruct.Value, 0),
+				}
+				out = &any.Any{}
+			)
+			method := fmt.Sprintf("/%s.%s/%s", "A", "A", "CallA")
+			grpclog.Println("start ", method)
+			err = grpc.Invoke(ctx, method, in, out, conn)
+			if err != nil {
+				println(`grpc.Invoke`, err.Error())
+			}
+			println(`out:`, out.String())
+
+			delete(s.PipelineInfo, string(pid.ID))
+			grpclog.Printf("PipelineInfo, %s", s.PipelineInfo)
+			return &pb.Empty{}, nil
+		}
+	}
+
 }
 
 func main() {

@@ -8,6 +8,8 @@ import (
 	pb "github.com/zex/zex/proto"
 	"google.golang.org/grpc/grpclog"
 	"io"
+	"time"
+	"sync"
 )
 
 var (
@@ -45,9 +47,18 @@ func main() {
 		return
 	}
 	grpclog.Printf("Pipeline close: %v", uuid)
-	_, err_run := client.RunPipeline(context.Background(), uuid)
-	if err_run != nil {
-		grpclog.Fatalf("%v.Pipeline(_) = _, %v", client, err)
-	}
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func () {
+		time.Sleep(1 * time.Microsecond)
+		cancel()
+		wg.Done()
+	} ();
+	_, err_run := client.RunPipeline(ctx, uuid)
 
+	if err_run != nil {
+		grpclog.Fatalf("%v.RunPipeline(_) = _, %v", client, err_run)
+	}
+	wg.Wait()
 }
