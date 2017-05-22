@@ -5,7 +5,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	_ "google.golang.org/grpc/credentials"
-	pb "github.com/zex/zex/proto"
+	pb "zex/zex/proto"
 	"google.golang.org/grpc/grpclog"
 	"io"
 	"time"
