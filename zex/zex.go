@@ -10,25 +10,74 @@ import (
 	"google.golang.org/grpc"
 	pb "zex/zex/proto"
 	_ "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
+	rpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
 	"google.golang.org/grpc/grpclog"
 	"github.com/golang/protobuf/ptypes/any"
 	pstruct "github.com/golang/protobuf/ptypes/struct"
 	_ "time"
+	"log"
 )
 
 var (
 	port = flag.Int("port", 10000, "The server port")
 )
 
+const count_service_poll_connection = 10
+
 type ZexServer struct {
+	// Add list service
 	RegisterServices   map[string]*pb.Service
-	PipelineInfo map[string][]*pb.Cmd
+	// Add connect to services
+	ServiceConntects   map[string][]*grpc.ClientConn
+	// Add pipeline script
+	PipelineInfo       map[string][]*pb.Cmd
 }
 
 // Register service interface impl
 func (s *ZexServer) Register(ctx context.Context, service *pb.Service) (*pb.Empty, error) {
-	grpclog.Printf("Start registraion service in Zex (%s, %s)", service.Name, service.Addr)
+	grpclog.Printf("Start registraion service in Zex (%s, %s), %s", service.Name, service.Addr, ctx.Value("AuthInfo"))
 	s.RegisterServices[service.Name] = service
+	// ---------------------
+	// Do reflection request
+	// ---------------------
+	grpclog.Printf("start get all methods in registred \"%s\" service", service.Addr)
+
+	// create connect
+	conn, err := grpc.Dial(service.Addr, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+		return &pb.Empty{}, nil
+	}
+	defer conn.Close()
+
+	// get services info
+	c := rpb.NewServerReflectionClient(conn)
+	grpclog.Printf("do info request")
+	informer, err := c.ServerReflectionInfo(ctx)
+	if err != nil {
+		log.Fatalf("did not informer: %v", err)
+		return &pb.Empty{}, nil
+	}
+	grpclog.Printf("do reflation request for list services")
+	err = informer.Send(&rpb.ServerReflectionRequest{
+		Host:           "localhost", //FIXME
+		MessageRequest: &rpb.ServerReflectionRequest_ListServices{},
+	})
+	if err != nil {
+		log.Fatalf("can't send info req: %v", err)
+
+	}
+	answer, err := informer.Recv()
+	grpclog.Println("get answer")
+	if err != nil {
+		log.Fatalf("Recv err: %v", err)
+	}
+	grpclog.Printf("answer: \"%s\"", answer.String())
+
+	// Add to RegisterServices
+
+	// Create pool connections with {count_service_poll_connection}
+
 	grpclog.Printf("Add service to map with key %s successed", s.RegisterServices)
 	return &pb.Empty{}, nil
 }
