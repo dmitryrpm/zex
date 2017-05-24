@@ -169,15 +169,15 @@ func (s *ZexServer) RunPipeline(pid string) {
 	grpclog.Println("connect to host localhost")
 
 	var (
-		ctx, _ = context.WithCancel(context.Background())
+		ctx, cancel = context.WithCancel(context.Background())
 		pipeline    []*zex.Cmd
 		ok          bool
 	)
 	println(pid)
-	//s.lockForPipper.RLock()
+	s.lockForPipper.RLock()
 	pipeline, ok = s.PipelineInfo[pid]
 	grpclog.Println("PipelineInfo=", s.PipelineInfo)
-	//s.lockForPipper.RUnlock()
+	s.lockForPipper.RUnlock()
 
 	if !ok {
 		grpclog.Printf("not found pipeline by id %s", pid)
@@ -192,22 +192,22 @@ func (s *ZexServer) RunPipeline(pid string) {
 	}
 
 	grpclog.Printf("Pipeline wait errors... %s", pid)
-	//for err := range errC {
-	//	grpclog.Println("asd")
-	//	lengthPipiline--
-	//	if err != nil {
-	//		cancel()
-	//		grpclog.Printf("Pipeline was failed by id %s: %s", pid, err)
-	//		return
-	//	}
-	//	if lengthPipiline == 0 {
-	//		close(errC)
-	//	}
-	//}
+	for err := range errC {
+		grpclog.Println("asd")
+		lengthPipiline--
+		if err != nil {
+			cancel()
+			grpclog.Printf("Pipeline was failed by id %s: %s", pid, err)
+			return
+		}
+		if lengthPipiline == 0 {
+			close(errC)
+		}
+	}
 
-	//s.lockForPipper.Lock()
+	s.lockForPipper.Lock()
 	delete(s.PipelineInfo, pid)
-	//s.lockForPipper.Unlock()
+	s.lockForPipper.Unlock()
 	grpclog.Printf("Pipeline %s was done ", pid)
 }
 
