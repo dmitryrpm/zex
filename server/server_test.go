@@ -39,15 +39,17 @@ func (m *mockInvoker) Invoke(ctx context.Context, method string, args, reply int
 		err = m.err
 	}
 	m.lock.Unlock()
+
+	// if for test need emulations of net latency
+	if m.letency > 0 {
+		grpclog.Printf("[test] set letency %s", m.letency)
+		time.Sleep(m.letency)
+		grpclog.Printf("wait %s", m.letency)
+	}
+
+
 	// other routes cancellation
 	if err != nil {
-		// if for test need emulations of net latency
-		if m.letency > 0 {
-			grpclog.Printf("[test] set letency %s", m.letency)
-			time.Sleep(m.letency)
-			grpclog.Printf("wait %s", m.letency)
-		}
-
 		select {
 		case <-ctx.Done():
 			err = ctx.Err()
@@ -97,7 +99,7 @@ func TestRunEngine(t *testing.T) {
 
 	zexMocks := []MockZexServer{
 		{
-			desc: "success simple",
+			desc: "test Pipeline success simple",
 			pid: "pid-1",
 			setPathToServices: map[string][]string{
 				"a.A/callA": []string{"localhost:2345"},
@@ -115,7 +117,7 @@ func TestRunEngine(t *testing.T) {
 					Body: []byte("bbbb"),
 				},
 			},
-			expPipeAfter: false, //was deleted
+			expPipeAfter: false,
 			expCallerCmd: []string{
 				"a.A/callA(aaaa)->%!s(<nil>)",
 				"a.A/callA(bbbb)->%!s(<nil>)",
@@ -123,7 +125,7 @@ func TestRunEngine(t *testing.T) {
 
 		},
 		{
-			desc: fmt.Sprintf("success with %s", errStrLetency),
+			desc: fmt.Sprintf("test Pipeline success with letency %s", errStrLetency),
 			pid: "pid-2",
 			invokeLetency: timeLetency,
 			invokeErr: errors.New(errStrLetency),
@@ -138,14 +140,10 @@ func TestRunEngine(t *testing.T) {
 					Path: "a.A/callA",
 					Body: []byte("aaaa"),
 				},
-				{
-					Path: "a.A/callA",
-					Body: []byte("bbbb"),
-				},
 			},
-			expPipeAfter: true, //was deleted
+			expPipeAfter: true,
 			expCallerCmd: []string{
-				fmt.Sprintf("a.A/callA(bbbb)->%s", errStrLetency),
+				fmt.Sprintf("a.A/callA(aaaa)->%s", errStrLetency),
 			},
 		},
 	}
@@ -183,4 +181,9 @@ func TestRunEngine(t *testing.T) {
 			}
 		})
 	}
+
+
+	t.Run("test Registry services", func(tt *testing.T) {
+
+	})
 }

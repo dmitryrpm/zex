@@ -27,11 +27,14 @@ func WithInvoker(invoker Invoker) zexOptions {
 func New(opts ...zexOptions) zex.ZexServer {
 	srv := &zexServer{
 		lockForRegger:    &sync.RWMutex{},
-		lockForPipper:    &sync.RWMutex{},
-		lockForPather:    &sync.RWMutex{},
 		RegisterServices: make(map[string]*grpc.ClientConn),
+
+		lockForPipper:    &sync.RWMutex{},
 		PipelineInfo:     make(map[string][]*zex.Cmd),
+
+		lockForPather:    &sync.RWMutex{},
 		PathToServices:   make(map[string][]string),
+
 		Invoke:           grpc.Invoke,
 	}
 
@@ -45,12 +48,13 @@ type Invoker func(ctx context.Context, method string, args, reply interface{}, c
 
 type zexServer struct {
 	lockForRegger    *sync.RWMutex
-	lockForPipper    *sync.RWMutex
-	lockForPather    *sync.RWMutex
 	RegisterServices map[string]*grpc.ClientConn
-	PathToServices   map[string][]string
-	// Add pipeline script
+
+	lockForPipper    *sync.RWMutex
 	PipelineInfo map[string][]*zex.Cmd
+
+	lockForPather    *sync.RWMutex
+	PathToServices   map[string][]string
 
 	Invoke Invoker
 }
@@ -111,7 +115,6 @@ func (s *zexServer) Register(ctx context.Context, service *zex.Service) (*zex.Em
 			if err != nil {
 				return nil, err
 			}
-			//bad code =))))
 
 			desc, err := extractFile(answerBySrv.GetFileDescriptorResponse().FileDescriptorProto[0])
 			if err != nil {
@@ -138,15 +141,6 @@ func (s *zexServer) Register(ctx context.Context, service *zex.Service) (*zex.Em
 
 	grpclog.Printf("Add service to map with key %s successed", serviceKey)
 	return &zex.Empty{}, nil
-}
-
-func extractFile(gz []byte) (*descriptor.FileDescriptorProto, error) {
-	fd := new(descriptor.FileDescriptorProto)
-	if err := proto.Unmarshal(gz, fd); err != nil {
-		return nil, fmt.Errorf("malformed FileDescriptorProto: %v", err)
-	}
-
-	return fd, nil
 }
 
 // Pipeline service interface impl
@@ -240,16 +234,7 @@ func (s *zexServer) runPipeline(pid string) {
 	grpclog.Printf("Pipeline %s was done ", pid)
 }
 
-type byteProto []byte
-
-func (b byteProto) Marshal() ([]byte, error) {
-	return b, nil
-}
-
-func (b byteProto) Reset()         {}
-func (b byteProto) String() string { return string(b) }
-func (b byteProto) ProtoMessage()  {}
-
+// Call command service
 func (s *zexServer) callCmd(ctx context.Context, cmd *zex.Cmd, errC chan error) {
 	var (
 		out        = &any.Any{}
@@ -261,6 +246,7 @@ func (s *zexServer) callCmd(ctx context.Context, cmd *zex.Cmd, errC chan error) 
 	serviceKey, ok = s.PathToServices[cmd.Path]
 	s.lockForPather.RUnlock()
 
+	// if not found
 	if !ok || len(serviceKey) == 0 {
 		errC <- errors.New(`not found path in PathToServices`)
 		return
@@ -270,6 +256,7 @@ func (s *zexServer) callCmd(ctx context.Context, cmd *zex.Cmd, errC chan error) 
 	cc, ok = s.RegisterServices[serviceKey[0]]
 	s.lockForRegger.RUnlock()
 
+	// if incorrect path
 	if !ok {
 		errC <- errors.New(`not found path in RegisterServices`)
 		return
@@ -277,5 +264,26 @@ func (s *zexServer) callCmd(ctx context.Context, cmd *zex.Cmd, errC chan error) 
 
 	grpclog.Println("start ", serviceKey, cmd.Path)
 	in := byteProto(cmd.Body)
+	// The grpc.Invoke or Mock in test returns an error, or nil to chan
 	errC <- s.Invoke(ctx, cmd.Path, &in, out, cc)
 }
+
+
+func extractFile(gz []byte) (*descriptor.FileDescriptorProto, error) {
+	fd := new(descriptor.FileDescriptorProto)
+	if err := proto.Unmarshal(gz, fd); err != nil {
+		return nil, fmt.Errorf("malformed FileDescriptorProto: %v", err)
+	}
+
+	return fd, nil
+}
+
+type byteProto []byte
+
+func (b byteProto) Marshal() ([]byte, error) {
+	return b, nil
+}
+
+func (b byteProto) Reset()         {}
+func (b byteProto) String() string { return string(b) }
+func (b byteProto) ProtoMessage()  {}
