@@ -1,3 +1,6 @@
+/*
+Package zex.server defines gRPS DSL service
+*/
 package server
 
 import (
@@ -14,16 +17,20 @@ import (
 	rpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
 	"io"
 	"sync"
+	"strings"
 )
 
+// Zex options
 type zexOptions func(*zexServer)
 
+// Mock wrapper
 func WithInvoker(invoker Invoker) zexOptions {
 	return func(srv *zexServer) {
 		srv.Invoke = invoker
 	}
 }
 
+// New constructor for ZexServer
 func New(opts ...zexOptions) zex.ZexServer {
 	srv := &zexServer{
 		lockForRegger:    &sync.RWMutex{},
@@ -44,8 +51,11 @@ func New(opts ...zexOptions) zex.ZexServer {
 	return srv
 }
 
+// Invoker function
 type Invoker func(ctx context.Context, method string, args, reply interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) error
 
+
+// ZexServer structure
 type zexServer struct {
 	lockForRegger    *sync.RWMutex
 	RegisterServices map[string]*grpc.ClientConn
@@ -65,7 +75,7 @@ func (s *zexServer) Register(ctx context.Context, service *zex.Service) (*zex.Em
 	// ---------------------
 	// Do reflection request
 	// ---------------------
-	serviceKey := service.Addr + `/` + service.Name
+	serviceKey := service.Addr + "/" + service.Name
 	grpclog.Printf("start get all methods in registred \"%s\" service", serviceKey)
 
 	// create connect
@@ -76,6 +86,10 @@ func (s *zexServer) Register(ctx context.Context, service *zex.Service) (*zex.Em
 		return nil, err
 	}
 
+	// get host, port
+	ss := strings.Split(service.Addr, ":")
+	host, _ := ss[0], ss[1]
+
 	// get services info
 	c := rpb.NewServerReflectionClient(conn)
 	grpclog.Printf("do info request")
@@ -84,9 +98,11 @@ func (s *zexServer) Register(ctx context.Context, service *zex.Service) (*zex.Em
 		grpclog.Printf("did not informer: %v", err)
 		return nil, err
 	}
+
+	// send to informer request, and received answer
 	grpclog.Printf("do reflation request for list services")
 	err = informer.Send(&rpb.ServerReflectionRequest{
-		Host:           "localhost", //FIXME
+		Host:           host, //FIXME
 		MessageRequest: &rpb.ServerReflectionRequest_ListServices{},
 	})
 	if err != nil {
@@ -94,33 +110,37 @@ func (s *zexServer) Register(ctx context.Context, service *zex.Service) (*zex.Em
 		return nil, err
 
 	}
-	answer, err := informer.Recv()
-	grpclog.Println("get answer")
+
+	info, err := informer.Recv()
 	if err != nil {
 		grpclog.Printf("Recv err: %v", err)
 		return nil, err
 	}
-	grpclog.Printf("answer: \"%s\"", answer.String())
+	grpclog.Printf("get info: host: \"%s\"", info.String())
 
-	for _, srv := range answer.GetListServicesResponse().GetService() {
-		if srv.Name != `grpc.reflection.v1alpha.ServerReflection` {
+	// Load FileDescriptorProto with services
+	for _, srv := range info.GetListServicesResponse().GetService() {
+		if srv.Name != "grpc.reflection.v1alpha.ServerReflection" {
 			err = informer.Send(&rpb.ServerReflectionRequest{
-				Host:           "localhost",
+				Host: host,
 				MessageRequest: &rpb.ServerReflectionRequest_FileContainingSymbol{FileContainingSymbol: srv.Name},
 			})
 			if err != nil {
 				return nil, err
 			}
-			answerBySrv, err := informer.Recv()
+
+			answer, err := informer.Recv()
 			if err != nil {
 				return nil, err
 			}
 
-			desc, err := extractFile(answerBySrv.GetFileDescriptorResponse().FileDescriptorProto[0])
+			// unpack file get file description
+			desc, err := extractFile(answer.GetFileDescriptorResponse().FileDescriptorProto[0])
 			if err != nil {
 				return nil, err
 			}
 
+			// read file, get services and register it
 			for _, serviceObj := range desc.GetService() {
 				for _, methodObj := range serviceObj.GetMethod() {
 					method := fmt.Sprintf("/%s.%s/%s", desc.GetPackage(), serviceObj.GetName(), methodObj.GetName())
@@ -134,7 +154,7 @@ func (s *zexServer) Register(ctx context.Context, service *zex.Service) (*zex.Em
 		}
 	}
 
-	// Add to RegisterServices
+	// Add to RegisterServices with locks
 	s.lockForRegger.Lock()
 	s.RegisterServices[serviceKey] = conn
 	s.lockForRegger.Unlock()
@@ -151,6 +171,7 @@ func (s *zexServer) Pipeline(stream zex.Zex_PipelineServer) error {
 
 	pipeline := make([]*zex.Cmd, 0)
 
+	// open stream, after close run pipeline
 	for {
 		cmd, err := stream.Recv()
 		if err == io.EOF {
@@ -193,6 +214,7 @@ func (s *zexServer) runPipeline(pid string) {
 	grpclog.Printf("Start RunPipeline uuid %s", pid)
 	grpclog.Println("connect to host localhost")
 
+	// Get context for cancel all goroutine calls
 	var (
 		ctx, cancel = context.WithCancel(context.Background())
 		pipeline    []*zex.Cmd
@@ -203,11 +225,13 @@ func (s *zexServer) runPipeline(pid string) {
 	pipeline, ok = s.PipelineInfo[pid]
 	s.lockForPipper.RUnlock()
 
+	// Check pipeline exists
 	if !ok {
 		grpclog.Printf("not found pipeline by id %s", pid)
 		return
 	}
 
+	// Create chan errC and wait doing all goroutine
 	lengthPipiline := len(pipeline)
 	errC := make(chan error, lengthPipiline)
 	for _, cmd := range pipeline {
@@ -217,17 +241,21 @@ func (s *zexServer) runPipeline(pid string) {
 	grpclog.Printf("Pipeline wait errors... %s", pid)
 	for err := range errC {
 		lengthPipiline--
-		// add logs
+
+		// If one of this fail, all failed
 		if err != nil {
 			cancel()
 			grpclog.Printf("Pipeline was failed by id %s: %s", pid, err)
 			return
 		}
+
+		// Close context if ok
 		if lengthPipiline == 0 {
 			close(errC)
 		}
 	}
 
+	// delete pipeline from map
 	s.lockForPipper.Lock()
 	delete(s.PipelineInfo, pid)
 	s.lockForPipper.Unlock()

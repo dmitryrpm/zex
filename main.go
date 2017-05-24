@@ -24,6 +24,6 @@ func main() {
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
 	zs := server.New()
-	zex.RegisterZexServer(grpcServer, &zs)
+	zex.RegisterZexServer(grpcServer, zs)
 	grpcServer.Serve(listener)
 }
