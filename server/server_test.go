@@ -12,6 +12,7 @@ import (
 	"time"
 	"google.golang.org/grpc/grpclog"
 	"errors"
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
 
@@ -78,7 +79,7 @@ type MockZexServer struct {
 	setRegisterServices map[string]*grpc.ClientConn
 	pipeline            []*zex.Cmd
 
-	expPipeAfter bool
+	countRows int
 	expCallerCmd []string
 }
 
@@ -102,48 +103,49 @@ func TestRunEngine(t *testing.T) {
 			desc: "test Pipeline success simple",
 			pid: "pid-1",
 			setPathToServices: map[string][]string{
-				"a.A/callA": []string{"localhost:2345"},
+				"/A.A/CallC": []string{"localhost:2345"},
+				"/A.A/CallB": []string{"localhost:2345"},
 			},
 			setRegisterServices: map[string]*grpc.ClientConn{
 				"localhost:2345": &grpc.ClientConn{},
 			},
 			pipeline: []*zex.Cmd{
 				{
-					Path: "a.A/callA",
+					Path: "/A.A/CallC",
 					Body: []byte("aaaa"),
 				},
 				{
-					Path: "a.A/callA",
-					Body: []byte("bbbb"),
+					Path: "/A.A/CallB",
+					Body: []byte("aaaa"),
 				},
 			},
-			expPipeAfter: false,
 			expCallerCmd: []string{
-				"a.A/callA(aaaa)->%!s(<nil>)",
-				"a.A/callA(bbbb)->%!s(<nil>)",
+				"/A.A/CallC(aaaa)->%!s(<nil>)",
+				"/A.A/CallB(aaaa)->%!s(<nil>)",
 			},
+			countRows: 0,
 
 		},
 		{
-			desc: fmt.Sprintf("test Pipeline success with letency %s", errStrLetency),
+			desc: fmt.Sprintf("test Pipeline fail with letency %s", errStrLetency),
 			pid: "pid-2",
 			invokeLetency: timeLetency,
 			invokeErr: errors.New(errStrLetency),
 			setPathToServices: map[string][]string{
-				"a.A/callA": []string{"localhost:2345"},
+				"/A.A/CallC": []string{"localhost:2345"},
 			},
 			setRegisterServices: map[string]*grpc.ClientConn{
 				"localhost:2345": &grpc.ClientConn{},
 			},
 			pipeline: []*zex.Cmd{
 				{
-					Path: "a.A/callA",
+					Path: "/A.A/CallC",
 					Body: []byte("aaaa"),
 				},
 			},
-			expPipeAfter: true,
+			countRows: 1,
 			expCallerCmd: []string{
-				fmt.Sprintf("a.A/callA(aaaa)->%s", errStrLetency),
+				fmt.Sprintf("/A.A/CallC(aaaa)->%s", errStrLetency),
 			},
 		},
 	}
@@ -157,21 +159,28 @@ func TestRunEngine(t *testing.T) {
 				letency:  tc.invokeLetency,
 			}
 
-			// example for show how work with options
-			s := New(WithInvoker(m.Invoke))
 
-			impl := s.(*zexServer)
+			// example for show how work with options
+			levelDB, _ := leveldb.OpenFile("/tmp/zex.db.test" + tc.desc, nil)
+			s := NewMock(WithInvoker(m.Invoke, levelDB))
+
+			impl := s.(*zexServerStruct)
+
 			impl.PathToServices = tc.setPathToServices
 			impl.RegisterServices = tc.setRegisterServices
-			impl.PipelineInfo[tc.pid] = tc.pipeline
+
+
+			for _, cmd := range tc.pipeline {
+				impl.DB.Put([]byte(tc.pid + "_" + cmd.Path), []byte(cmd.Body), nil)
+			}
 
 			impl.runPipeline(tc.pid)
 
-			_, ok := impl.PipelineInfo[tc.pid]
-
-			if tc.expPipeAfter != ok {
-				tt.Errorf("expected equals, but \"%v\" != \"%v\"", tc.expPipeAfter, ok)
+			count := impl.getRowCount()
+			if  count != tc.countRows {
+				tt.Errorf("leveldb rows shoude be %s, but we have rows \"%v\"", tc.countRows, count)
 			}
+
 			// sort expected
 			sort.Strings(tc.expCallerCmd)
 			// sort called
@@ -179,6 +188,7 @@ func TestRunEngine(t *testing.T) {
 			if strings.Join(tc.expCallerCmd, ",") != strings.Join(m.data, ",") {
 				tt.Errorf("expected equals, but \"%v\" != \"%v\"", tc.expCallerCmd, m.data)
 			}
+			//delete leveldb
 		})
 	}
 
