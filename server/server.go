@@ -3,11 +3,11 @@ package server
 import (
 	"errors"
 	"fmt"
-	zex "zex/proto"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/pborman/uuid"
+	zex "zex/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
@@ -15,28 +15,48 @@ import (
 	"io"
 	"sync"
 )
-type ZexServer struct {
-	lockForRegger    *sync.RWMutex
-	lockForPipper    *sync.RWMutex
-	lockForPather    *sync.RWMutex
-	RegisterServicesConn map[string]*grpc.ClientConn
-	PathToServices   map[string][]string
-	PipelineInfo map[string][]*zex.Cmd
-}
 
-func New() ZexServer {
-	return ZexServer{
-		lockForRegger:    &sync.RWMutex{},
-		lockForPipper:    &sync.RWMutex{},
-		lockForPather:    &sync.RWMutex{},
-		RegisterServicesConn: make(map[string]*grpc.ClientConn),
-		PipelineInfo:     make(map[string][]*zex.Cmd),
-		PathToServices:   make(map[string][]string),
+type zexOptions func(*zexServer)
+
+func WithInvoker(invoker Invoker) zexOptions {
+	return func(srv *zexServer) {
+		srv.Invoke = invoker
 	}
 }
 
+func New(opts ...zexOptions) zex.ZexServer {
+	srv := &zexServer{
+		lockForRegger:    &sync.RWMutex{},
+		lockForPipper:    &sync.RWMutex{},
+		lockForPather:    &sync.RWMutex{},
+		RegisterServices: make(map[string]*grpc.ClientConn),
+		PipelineInfo:     make(map[string][]*zex.Cmd),
+		PathToServices:   make(map[string][]string),
+		Invoke:           grpc.Invoke,
+	}
+
+	for _, opt := range opts {
+		opt(srv)
+	}
+	return srv
+}
+
+type Invoker func(ctx context.Context, method string, args, reply interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) error
+
+type zexServer struct {
+	lockForRegger    *sync.RWMutex
+	lockForPipper    *sync.RWMutex
+	lockForPather    *sync.RWMutex
+	RegisterServices map[string]*grpc.ClientConn
+	PathToServices   map[string][]string
+	// Add pipeline script
+	PipelineInfo map[string][]*zex.Cmd
+
+	Invoke Invoker
+}
+
 // Register service interface impl
-func (s *ZexServer) Register(ctx context.Context, service *zex.Service) (*zex.Empty, error) {
+func (s *zexServer) Register(ctx context.Context, service *zex.Service) (*zex.Empty, error) {
 	grpclog.Printf("Start registraion service in Zex (%s, %s)", service.Name, service.Addr)
 	// ---------------------
 	// Do reflection request
@@ -91,6 +111,7 @@ func (s *ZexServer) Register(ctx context.Context, service *zex.Service) (*zex.Em
 			if err != nil {
 				return nil, err
 			}
+			//bad code =))))
 
 			desc, err := extractFile(answerBySrv.GetFileDescriptorResponse().FileDescriptorProto[0])
 			if err != nil {
@@ -110,17 +131,26 @@ func (s *ZexServer) Register(ctx context.Context, service *zex.Service) (*zex.Em
 		}
 	}
 
-	// Add to RegisterServicesConn
+	// Add to RegisterServices
 	s.lockForRegger.Lock()
-	s.RegisterServicesConn[serviceKey] = conn
+	s.RegisterServices[serviceKey] = conn
 	s.lockForRegger.Unlock()
 
 	grpclog.Printf("Add service to map with key %s successed", serviceKey)
 	return &zex.Empty{}, nil
 }
 
+func extractFile(gz []byte) (*descriptor.FileDescriptorProto, error) {
+	fd := new(descriptor.FileDescriptorProto)
+	if err := proto.Unmarshal(gz, fd); err != nil {
+		return nil, fmt.Errorf("malformed FileDescriptorProto: %v", err)
+	}
+
+	return fd, nil
+}
+
 // Pipeline service interface impl
-func (s *ZexServer) Pipeline(stream zex.Zex_PipelineServer) error {
+func (s *zexServer) Pipeline(stream zex.Zex_PipelineServer) error {
 	grpclog.Printf("listen stream pipeline")
 
 	pid := uuid.New()
@@ -140,7 +170,8 @@ func (s *ZexServer) Pipeline(stream zex.Zex_PipelineServer) error {
 			s.PipelineInfo[pid] = pipeline
 			s.lockForPipper.Unlock()
 
-			go s.RunPipeline(pid)
+			// like send to scheduler =))))
+			go s.runPipeline(pid)
 			return nil
 		}
 
@@ -157,14 +188,14 @@ func (s *ZexServer) Pipeline(stream zex.Zex_PipelineServer) error {
 }
 
 // Subscribe service interface impl
-func (s *ZexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, error) {
+func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, error) {
 	grpclog.Printf("Start Subscribe uuid %s", pid.ID)
 
 	return &zex.Empty{}, nil
 }
 
 // Run pipeline
-func (s *ZexServer) RunPipeline(pid string) {
+func (s *zexServer) runPipeline(pid string) {
 	grpclog.Printf("Start RunPipeline uuid %s", pid)
 	grpclog.Println("connect to host localhost")
 
@@ -173,10 +204,9 @@ func (s *ZexServer) RunPipeline(pid string) {
 		pipeline    []*zex.Cmd
 		ok          bool
 	)
-	println(pid)
+
 	s.lockForPipper.RLock()
 	pipeline, ok = s.PipelineInfo[pid]
-	grpclog.Println("PipelineInfo=", s.PipelineInfo)
 	s.lockForPipper.RUnlock()
 
 	if !ok {
@@ -187,14 +217,13 @@ func (s *ZexServer) RunPipeline(pid string) {
 	lengthPipiline := len(pipeline)
 	errC := make(chan error, lengthPipiline)
 	for _, cmd := range pipeline {
-		grpclog.Printf("start cmd... %s", cmd)
-		go s.runCmd(ctx, cmd, errC)
+		go s.callCmd(ctx, cmd, errC)
 	}
 
 	grpclog.Printf("Pipeline wait errors... %s", pid)
 	for err := range errC {
-		grpclog.Println("asd")
 		lengthPipiline--
+		// add logs
 		if err != nil {
 			cancel()
 			grpclog.Printf("Pipeline was failed by id %s: %s", pid, err)
@@ -211,16 +240,6 @@ func (s *ZexServer) RunPipeline(pid string) {
 	grpclog.Printf("Pipeline %s was done ", pid)
 }
 
-func extractFile(gz []byte) (*descriptor.FileDescriptorProto, error) {
-	fd := new(descriptor.FileDescriptorProto)
-	if err := proto.Unmarshal(gz, fd); err != nil {
-		return nil, fmt.Errorf("malformed FileDescriptorProto: %v", err)
-	}
-
-	return fd, nil
-}
-
-
 type byteProto []byte
 
 func (b byteProto) Marshal() ([]byte, error) {
@@ -231,8 +250,7 @@ func (b byteProto) Reset()         {}
 func (b byteProto) String() string { return string(b) }
 func (b byteProto) ProtoMessage()  {}
 
-func (s *ZexServer) runCmd(ctx context.Context, cmd *zex.Cmd, errC chan error) {
-
+func (s *zexServer) callCmd(ctx context.Context, cmd *zex.Cmd, errC chan error) {
 	var (
 		out        = &any.Any{}
 		cc         *grpc.ClientConn
@@ -244,20 +262,20 @@ func (s *ZexServer) runCmd(ctx context.Context, cmd *zex.Cmd, errC chan error) {
 	s.lockForPather.RUnlock()
 
 	if !ok || len(serviceKey) == 0 {
-		errC <- errors.New(`not found path in services of registry`)
+		errC <- errors.New(`not found path in PathToServices`)
 		return
 	}
 
 	s.lockForRegger.RLock()
-	cc, ok = s.RegisterServicesConn[serviceKey[0]]
+	cc, ok = s.RegisterServices[serviceKey[0]]
 	s.lockForRegger.RUnlock()
 
 	if !ok {
-		errC <- errors.New(`not found path in services of registry`)
+		errC <- errors.New(`not found path in RegisterServices`)
 		return
 	}
 
 	grpclog.Println("start ", serviceKey, cmd.Path)
 	in := byteProto(cmd.Body)
-	errC <- grpc.Invoke(ctx, cmd.Path, &in, out, cc)
+	errC <- s.Invoke(ctx, cmd.Path, &in, out, cc)
 }
