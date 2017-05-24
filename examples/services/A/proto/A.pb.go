@@ -9,6 +9,7 @@ It is generated from these files:
 
 It has these top-level messages:
 	Empty
+	Req
 */
 package A
 
@@ -41,8 +42,26 @@ func (m *Empty) String() string            { return proto.CompactTextString(m) }
 func (*Empty) ProtoMessage()               {}
 func (*Empty) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
+// Request
+type Req struct {
+	Name string `protobuf:"bytes,1,opt,name=Name" json:"Name,omitempty"`
+}
+
+func (m *Req) Reset()                    { *m = Req{} }
+func (m *Req) String() string            { return proto.CompactTextString(m) }
+func (*Req) ProtoMessage()               {}
+func (*Req) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+
+func (m *Req) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterType((*Empty)(nil), "A.Empty")
+	proto.RegisterType((*Req)(nil), "A.Req")
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -56,9 +75,9 @@ const _ = grpc.SupportPackageIsVersion4
 // Client API for A service
 
 type AClient interface {
-	CallA(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
-	CallB(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
-	CallC(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
+	CallA(ctx context.Context, in *Req, opts ...grpc.CallOption) (*Empty, error)
+	CallB(ctx context.Context, in *Req, opts ...grpc.CallOption) (*Empty, error)
+	CallC(ctx context.Context, in *Req, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type aClient struct {
@@ -69,7 +88,7 @@ func NewAClient(cc *grpc.ClientConn) AClient {
 	return &aClient{cc}
 }
 
-func (c *aClient) CallA(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
+func (c *aClient) CallA(ctx context.Context, in *Req, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
 	err := grpc.Invoke(ctx, "/A.A/CallA", in, out, c.cc, opts...)
 	if err != nil {
@@ -78,7 +97,7 @@ func (c *aClient) CallA(ctx context.Context, in *Empty, opts ...grpc.CallOption)
 	return out, nil
 }
 
-func (c *aClient) CallB(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
+func (c *aClient) CallB(ctx context.Context, in *Req, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
 	err := grpc.Invoke(ctx, "/A.A/CallB", in, out, c.cc, opts...)
 	if err != nil {
@@ -87,7 +106,7 @@ func (c *aClient) CallB(ctx context.Context, in *Empty, opts ...grpc.CallOption)
 	return out, nil
 }
 
-func (c *aClient) CallC(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
+func (c *aClient) CallC(ctx context.Context, in *Req, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
 	err := grpc.Invoke(ctx, "/A.A/CallC", in, out, c.cc, opts...)
 	if err != nil {
@@ -99,9 +118,9 @@ func (c *aClient) CallC(ctx context.Context, in *Empty, opts ...grpc.CallOption)
 // Server API for A service
 
 type AServer interface {
-	CallA(context.Context, *Empty) (*Empty, error)
-	CallB(context.Context, *Empty) (*Empty, error)
-	CallC(context.Context, *Empty) (*Empty, error)
+	CallA(context.Context, *Req) (*Empty, error)
+	CallB(context.Context, *Req) (*Empty, error)
+	CallC(context.Context, *Req) (*Empty, error)
 }
 
 func RegisterAServer(s *grpc.Server, srv AServer) {
@@ -109,7 +128,7 @@ func RegisterAServer(s *grpc.Server, srv AServer) {
 }
 
 func _A_CallA_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
+	in := new(Req)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -121,13 +140,13 @@ func _A_CallA_Handler(srv interface{}, ctx context.Context, dec func(interface{}
 		FullMethod: "/A.A/CallA",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AServer).CallA(ctx, req.(*Empty))
+		return srv.(AServer).CallA(ctx, req.(*Req))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _A_CallB_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
+	in := new(Req)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -139,13 +158,13 @@ func _A_CallB_Handler(srv interface{}, ctx context.Context, dec func(interface{}
 		FullMethod: "/A.A/CallB",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AServer).CallB(ctx, req.(*Empty))
+		return srv.(AServer).CallB(ctx, req.(*Req))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _A_CallC_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
+	in := new(Req)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -157,7 +176,7 @@ func _A_CallC_Handler(srv interface{}, ctx context.Context, dec func(interface{}
 		FullMethod: "/A.A/CallC",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AServer).CallC(ctx, req.(*Empty))
+		return srv.(AServer).CallC(ctx, req.(*Req))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -186,11 +205,12 @@ var _A_serviceDesc = grpc.ServiceDesc{
 func init() { proto.RegisterFile("A.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 84 bytes of a gzipped FileDescriptorProto
+	// 112 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x62, 0x77, 0xd4, 0x2b, 0x28,
-	0xca, 0x2f, 0xc9, 0x17, 0x62, 0x74, 0x54, 0x62, 0xe7, 0x62, 0x75, 0xcd, 0x2d, 0x28, 0xa9, 0x34,
-	0x4a, 0xe0, 0x62, 0x74, 0x14, 0x92, 0xe5, 0x62, 0x75, 0x4e, 0xcc, 0xc9, 0x71, 0x14, 0xe2, 0xd0,
-	0x73, 0xd4, 0x03, 0x8b, 0x4b, 0xc1, 0x59, 0x4a, 0x0c, 0x30, 0x69, 0x27, 0xfc, 0xd2, 0xce, 0xd8,
-	0xa5, 0x93, 0xd8, 0xc0, 0x96, 0x1a, 0x03, 0x02, 0x00, 0x00, 0xff, 0xff, 0xae, 0xfc, 0x38, 0x7c,
-	0x7f, 0x00, 0x00, 0x00,
+	0xca, 0x2f, 0xc9, 0x17, 0x62, 0x74, 0x54, 0x62, 0xe7, 0x62, 0x75, 0xcd, 0x2d, 0x28, 0xa9, 0x54,
+	0x92, 0xe4, 0x62, 0x0e, 0x4a, 0x2d, 0x14, 0x12, 0xe2, 0x62, 0xf1, 0x4b, 0xcc, 0x4d, 0x95, 0x60,
+	0x54, 0x60, 0xd4, 0xe0, 0x0c, 0x02, 0xb3, 0x8d, 0xa2, 0xb8, 0x18, 0x1d, 0x85, 0xa4, 0xb9, 0x58,
+	0x9d, 0x13, 0x73, 0x72, 0x1c, 0x85, 0xd8, 0xf4, 0x1c, 0xf5, 0x82, 0x52, 0x0b, 0xa5, 0x38, 0xf4,
+	0x1c, 0xf5, 0x20, 0x5a, 0x19, 0x60, 0x92, 0x4e, 0xf8, 0x24, 0x9d, 0xb1, 0x49, 0x26, 0xb1, 0x81,
+	0x5d, 0x62, 0x0c, 0x08, 0x00, 0x00, 0xff, 0xff, 0x38, 0x87, 0x63, 0xd5, 0x94, 0x00, 0x00, 0x00,
 }

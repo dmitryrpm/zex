@@ -4,13 +4,18 @@ package A;
 
 // Interface exported by the server.
 service A {
-    rpc CallA(Empty) returns (Empty) {}
-    rpc CallB(Empty) returns (Empty) {}
-    rpc CallC(Empty) returns (Empty) {}
+    rpc CallA(Req) returns (Empty) {}
+    rpc CallB(Req) returns (Empty) {}
+    rpc CallC(Req) returns (Empty) {}
 }
 
 // Empty msg
 message Empty {}
+
+// Request
+message Req {
+    string  Name = 1;
+}
 
 
 

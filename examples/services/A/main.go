@@ -2,80 +2,89 @@ package main
 
 import (
 	"flag"
+	"net"
+	A "zex/examples/services/A/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	_ "google.golang.org/grpc/credentials"
-	pb "zex/zex/proto"
-	lpb "zex/examples/services/A/proto"
 	"google.golang.org/grpc/grpclog"
-	"net"
 	"google.golang.org/grpc/reflection"
+	"sync"
+	zex "zex/proto"
 )
 
 var (
-	zexServerAddr = flag.String("zex_server_addr", "127.0.0.1:10000", "Zex server in the format of host:port")
-	serverAddr = flag.String("server_addr", "127.0.0.1:9999", "The local server address in the format of host:port")
+	zexServerAddr = flag.String("zex", "127.0.0.1:10000", "Zex server in the format of host:port")
+	serverAddr    = flag.String("addr", "localhost:3456", "The local server address in the format of host:port")
 )
 
 // Registry service to Zex
-func registerZex(client pb.ZexClient, service *pb.Service) {
+func registerZex(client zex.ZexClient, service *zex.Service) {
 	grpclog.Printf("Start registry service in Zex (%s, %s)", service.Name, service.Addr)
-	zex, err := client.Register(context.Background(), service)
+	z, err := client.Register(context.Background(), service)
 	if err != nil {
 		grpclog.Fatalf("%v.Registry(_) = _, %v: ", client, err)
 	}
-	grpclog.Println(zex)
+	grpclog.Println(z)
 }
 
-type AServer struct {}
+type AServer struct{}
 
-func (s *AServer) CallA (ctx context.Context, empty *lpb.Empty) (*lpb.Empty, error) {
-	grpclog.Printf("Call service A.%s with empty: ", empty)
-	return &lpb.Empty{}, nil
+func (s *AServer) CallA(ctx context.Context, empty *A.Req) (*A.Empty, error) {
+	defer grpclog.Printf("Call service A.%s with req", empty)
+	return &A.Empty{}, nil
+
 }
 
-func (s *AServer) CallB (ctx context.Context, empty *lpb.Empty) (*lpb.Empty, error) {
-	grpclog.Printf("Call service A.%s with empty: ", empty)
-	return &lpb.Empty{}, nil
+func (s *AServer) CallB(ctx context.Context, empty *A.Req) (*A.Empty, error) {
+	grpclog.Printf("Call service A.%s with req", empty)
+	return &A.Empty{}, nil
 }
 
-func (s *AServer) CallC (ctx context.Context, empty *lpb.Empty) (*lpb.Empty, error) {
-	grpclog.Printf("Call service A.%s with empty: ", empty)
-	return &lpb.Empty{}, nil
+func (s *AServer) CallC(ctx context.Context, empty *A.Req) (*A.Empty, error) {
+	grpclog.Printf("Call service A.%s with req", empty)
+	return &A.Empty{}, nil
 }
 
 func main() {
 	flag.Parse()
+
+	grpclog.Println("starting local service in ", serverAddr)
+	listener, err := net.Listen("tcp", *serverAddr)
+	if err != nil {
+		grpclog.Fatalf("failed to listen: %v", err)
+	}
+
+	grpcServer := grpc.NewServer()
+
+	s := new(AServer)
+	A.RegisterAServer(grpcServer, s)
+	reflection.Register(grpcServer)
+
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
+
+	go func() {
+		wg.Done()
+		err = grpcServer.Serve(listener)
+		if err != nil {
+			grpclog.Fatalf("fail serve: %v", err)
+		}
+		wg.Done()
+	}()
+
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithInsecure())
 
 	grpclog.Println("registering to Zex")
-	conn, err := grpc.Dial(*zexServerAddr, opts...)
+	zexConn, err := grpc.Dial(*zexServerAddr, opts...)
 	if err != nil {
 		grpclog.Fatalf("fail to dial: %v", err)
 	}
-	client := pb.NewZexClient(conn)
-	registerZex(client, &pb.Service{Name: "A", Addr: *serverAddr})
+	zexClient := zex.NewZexClient(zexConn)
+	registerZex(zexClient, &zex.Service{Name: "serviceA1", Addr: *serverAddr})
 	grpclog.Println("registed... close connection")
-	conn.Close()
+	zexConn.Close()
 
-	grpclog.Println("starting local service in ", serverAddr)
-	tcp_connect, err := net.Listen("tcp", *serverAddr)
-	if err != nil {
-		grpclog.Fatalf("failed to listen: %v", err)
-	}
-	var server_opts []grpc.ServerOption
-	grpcServer := grpc.NewServer(server_opts...)
+	wg.Wait()
 
-	my_service := new(AServer)
-	lpb.RegisterAServer(grpcServer, my_service)
-	reflection.Register(grpcServer)
-	grpcServer.Serve(tcp_connect)
-
-
-	//grpcServer := grpc.NewServer()
-	//pb.RegisterYourOwnServer(grpcServer, &my_service)
-	// Register reflection service on gRPC server.
-	//reflection.Register(grpcServer)
-	//grpcServer.Serve(tcp_connect)
 }

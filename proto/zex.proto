@@ -7,7 +7,6 @@ service Zex {
     rpc Register(Service) returns (Empty) {}
     rpc Pipeline(stream Cmd) returns (Pid) {}
     rpc Subscribe(Pid) returns (Empty) {}
-    rpc RunPipeline(Pid) returns (Empty) {}
 }
 
 // Interface serivice, this is add service to zex

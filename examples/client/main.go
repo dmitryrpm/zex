@@ -2,18 +2,17 @@ package main
 
 import (
 	"flag"
+	"io"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	_ "google.golang.org/grpc/credentials"
-	pb "zex/zex/proto"
 	"google.golang.org/grpc/grpclog"
-	"io"
-	"time"
-	"sync"
+	a "zex/examples/services/A/proto"
+	"github.com/golang/protobuf/proto"
+	"zex/proto"
 )
 
 var (
-	zexServerAddr = flag.String("zex_server_addr", "127.0.0.1:10000", "Zex server in the format of host:port")
+	zexServerAddr = flag.String("zex", "127.0.0.1:10000", "Zex server in the format of host:port")
 )
 
 func main() {
@@ -26,7 +25,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	client := pb.NewZexClient(conn)
+	client := zex.NewZexClient(conn)
 
 	grpclog.Printf("Start send pipeline task to in Zex")
 	stream, err := client.Pipeline(context.Background())
@@ -34,31 +33,34 @@ func main() {
 		grpclog.Fatalf("%v.Pipeline(_) = _, %v", client, err)
 	}
 
-	cmd := pb.Cmd{pb.CmdType(1),"A.callA",[]byte("Body")}
-	if err := stream.Send(&cmd); err != nil {
-		grpclog.Fatalf("%v.Send(%v) = %v", stream, cmd, err)
+	// тут мы шлем реальное тело
+	var (
+		req1 = &a.Req{Name: "AloxaA"}
+		req2 = &a.Req{Name: "AloxaB"}
+		req3 = &a.Req{Name: "AloxaC"}
+	)
+
+	body1, _ := proto.Marshal(req1)
+	body2, _ := proto.Marshal(req2)
+	body3, _ := proto.Marshal(req3)
+
+	// три раза!
+	if err := stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/A.A/CallA", body1}); err != nil {
+		grpclog.Fatalf("%v.Send(%v) = %v", stream, "/A.A/CallA", err)
+	}
+	if err := stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/A.A/CallB", body2}); err != nil {
+		grpclog.Fatalf("%v.Send(%v) = %v", stream, "/A.A/CallB", err)
+	}
+	if err := stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/A.A/CallC", body3}); err != nil {
+		grpclog.Fatalf("%v.Send(%v) = %v", stream, "/A.A/CallC", err)
 	}
 
-	uuid, err := stream.CloseAndRecv()
+	pid, err := stream.CloseAndRecv()
 	if err == io.EOF {
 		grpclog.Printf("close stream")
 	} else if err != nil {
 		grpclog.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
 		return
 	}
-	grpclog.Printf("Pipeline close: %v", uuid)
-	ctx, cancel := context.WithCancel(context.Background())
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func () {
-		time.Sleep(1 * time.Microsecond)
-		cancel()
-		wg.Done()
-	} ();
-	_, err_run := client.RunPipeline(ctx, uuid)
-
-	if err_run != nil {
-		grpclog.Fatalf("%v.RunPipeline(_) = _, %v", client, err_run)
-	}
-	wg.Wait()
+	grpclog.Printf("Pipeline close: %v", pid)
 }
