@@ -6,9 +6,9 @@ import (
 	"net"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
-	"zex/proto"
-	"zex/server"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/dmitryrpm/zex/proto"
+	"github.com/dmitryrpm/zex/server"
 )
 
 var (
@@ -23,7 +23,7 @@ func main() {
 		grpclog.Fatalf("failed to listen: %v", err)
 	}
 
-	levelDB, err := leveldb.OpenFile("zex.db", nil)
+	levelDB, err := leveldb.OpenFile("/tmp/zex.db", nil)
 
 	if err != nil {
 		panic("incorrect create level db")

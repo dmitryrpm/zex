@@ -6,9 +6,9 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
-	a "zex/examples/services/A/proto"
+	a "github.com/dmitryrpm/zex/examples/services/A/proto"
 	"github.com/golang/protobuf/proto"
-	"zex/proto"
+	"github.com/dmitryrpm/zex/proto"
 )
 
 var (

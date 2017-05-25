@@ -11,7 +11,7 @@ import (
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/pborman/uuid"
-	zex "zex/proto"
+	zex "github.com/dmitryrpm/zex/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
