@@ -12,6 +12,7 @@ import (
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/pborman/uuid"
 	zex "zex/proto"
+	"zex/storage"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
@@ -24,8 +25,9 @@ import (
 // Invoker function for mock
 type Invoker func(ctx context.Context, method string, args, reply interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) error
 
-// New MOCK constructor for ZexServer
-func NewMock(invoker Invoker, levelDB *leveldb.DB) *zexServerStruct {
+
+// New MOCK constructor for Tests
+func NewMock(invoker Invoker, DB storage.Storage) *zexServerStruct {
 	return &zexServerStruct{
 		lockForRegger:    &sync.RWMutex{},
 		RegisterServices: make(map[string]*grpc.ClientConn),
@@ -34,12 +36,13 @@ func NewMock(invoker Invoker, levelDB *leveldb.DB) *zexServerStruct {
 		PathToServices:   make(map[string][]string),
 
 		Invoke:           invoker,
-		DB:               levelDB,
+		DB:               DB,
 	}
 }
 
+
 // New constructor
-func New(DB *leveldb.DB) zex.ZexServer {
+func New(DB storage.Storage) zex.ZexServer {
 
 	return &zexServerStruct{
 		lockForRegger:    &sync.RWMutex{},
@@ -53,6 +56,7 @@ func New(DB *leveldb.DB) zex.ZexServer {
 	}
 }
 
+
 // zexServerStruct structure
 type zexServerStruct struct {
 	lockForRegger    *sync.RWMutex
@@ -62,8 +66,9 @@ type zexServerStruct struct {
 	PathToServices   map[string][]string
 
 	Invoke           Invoker
-	DB               *leveldb.DB
+	DB               storage.Storage
 }
+
 
 // Register service interface impl
 func (s *zexServerStruct) Register(ctx context.Context, service *zex.Service) (*zex.Empty, error) {
