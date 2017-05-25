@@ -21,41 +21,26 @@ import (
 	"strings"
 )
 
-// Zex options
-type zexOptions func(*zexServerStruct)
-
-// Mock wrapper
-func WithInvoker(invoker Invoker, levelDB *leveldb.DB) zexOptions {
-	return func(srv *zexServerStruct) {
-		srv.Invoke = invoker
-		srv.DB = levelDB
-	}
-}
+// Invoker function for mock
+type Invoker func(ctx context.Context, method string, args, reply interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) error
 
 // New MOCK constructor for ZexServer
-func NewMock(opts ...zexOptions) zex.ZexServer {
-
-	// add check error level db create
-
-	srv := &zexServerStruct{
+func NewMock(invoker Invoker, levelDB *leveldb.DB) *zexServerStruct {
+	return &zexServerStruct{
 		lockForRegger:    &sync.RWMutex{},
 		RegisterServices: make(map[string]*grpc.ClientConn),
 
 		lockForPather:    &sync.RWMutex{},
 		PathToServices:   make(map[string][]string),
 
-		Invoke:           grpc.Invoke,
+		Invoke:           invoker,
+		DB:               levelDB,
 	}
-
-	for _, opt := range opts {
-		opt(srv)
-	}
-
-	return srv
 }
 
-// New constructor for ZexServer
+// New constructor
 func New(DB *leveldb.DB) zex.ZexServer {
+
 	return &zexServerStruct{
 		lockForRegger:    &sync.RWMutex{},
 		RegisterServices: make(map[string]*grpc.ClientConn),
@@ -67,11 +52,6 @@ func New(DB *leveldb.DB) zex.ZexServer {
 		DB:               DB,
 	}
 }
-
-
-// Invoker function
-type Invoker func(ctx context.Context, method string, args, reply interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) error
-
 
 // zexServerStruct structure
 type zexServerStruct struct {
@@ -118,7 +98,7 @@ func (s *zexServerStruct) Register(ctx context.Context, service *zex.Service) (*
 	// send to informer request, and received answer
 	grpclog.Printf("do reflation request for list services")
 	err = informer.Send(&rpb.ServerReflectionRequest{
-		Host:           host, //FIXME
+		Host:           host,
 		MessageRequest: &rpb.ServerReflectionRequest_ListServices{},
 	})
 	if err != nil {

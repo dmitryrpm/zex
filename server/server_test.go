@@ -83,16 +83,6 @@ type MockZexServer struct {
 	expCallerCmd []string
 }
 
-//
-//func (s *MockZexServer) prepare() error {
-//	return nil
-//}
-
-//func WithPrepare(invoker func) error {
-//	return func(srv *MockZexServer) {
-//		srv.prepare = invoker
-//	}
-//}
 
 func TestRunEngine(t *testing.T) {
 
@@ -162,13 +152,9 @@ func TestRunEngine(t *testing.T) {
 
 			// example for show how work with options
 			levelDB, _ := leveldb.OpenFile("/tmp/zex.db.test" + tc.desc, nil)
-			s := NewMock(WithInvoker(m.Invoke, levelDB))
-
-			impl := s.(*zexServerStruct)
-
+			impl := NewMock(m.Invoke, levelDB)
 			impl.PathToServices = tc.setPathToServices
 			impl.RegisterServices = tc.setRegisterServices
-
 
 			for _, cmd := range tc.pipeline {
 				impl.DB.Put([]byte(tc.pid + "_" + cmd.Path), []byte(cmd.Body), nil)

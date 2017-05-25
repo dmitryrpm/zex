@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	zexServerAddr = flag.String("zex", "127.0.0.1:10000", "Zex server in the format of host:port")
+	zexServerAddr = flag.String("zex", "127.0.0.1:54321", "Zex server in the format of host:port")
 )
 
 func main() {

@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	port = flag.Int("port", 10000, "The server port")
+	port = flag.Int("port", 54321, "The server port")
 )
 
 func main() {

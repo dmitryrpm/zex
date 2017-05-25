@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	zexServerAddr = flag.String("zex", "127.0.0.1:10000", "Zex server in the format of host:port")
-	serverAddr    = flag.String("addr", "localhost:3456", "The local server address in the format of host:port")
+	zexServerAddr = flag.String("zex", "127.0.0.1:54321", "Zex server in the format of host:port")
+	serverAddr    = flag.String("addr", "127.0.0.1:54322", "The local server address in the format of host:port")
 )
 
 // Registry service to Zex
