@@ -20,7 +20,7 @@ func New(path string) (db *LevelDB, err error) {
 // LevelDB structure
 //---------------------------
 type LevelDB struct {
-	DB *leveldb.DB
+	DB	*leveldb.DB
 }
 
 func (st *LevelDB) GetIterator() storage.Iterator {
@@ -47,7 +47,7 @@ func (st *LevelDB) NewTransaction() storage.Transaction {
 //-------------------------------
 type levelDBTransaction struct {
 	storage     *LevelDB
-	batch  *leveldb.Batch
+	batch       *leveldb.Batch
 }
 
 func (t *levelDBTransaction) Put(k []byte, v []byte) {
