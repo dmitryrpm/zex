@@ -156,7 +156,7 @@ func TestRunEngine(t *testing.T) {
 	for _, tc := range zexMocks {
 		//DBPath := "/tmp/zex.db.test"
 		//err := os.Remove(DBPath)
-		//levelDB, _ := leveldb.OpenFile(DBPath, nil)
+		//levelDB, _ := storage_leveldb.OpenFile(DBPath, nil)
 		t.Run(tc.desc, func(tt *testing.T) {
 			m := &mockInvoker{
 				lock:     &sync.Mutex{},
@@ -167,7 +167,7 @@ func TestRunEngine(t *testing.T) {
 
 
 			// example for show how work with options
-			dbMock := storage.DbLevelStorageMock{}
+			dbMock := storage.DbLevelStorage{}
 			impl := NewMock(m.Invoke, &dbMock)
 			impl.PathToServices = tc.setPathToServices
 			impl.RegisterServices = tc.setRegisterServices
@@ -179,9 +179,9 @@ func TestRunEngine(t *testing.T) {
 
 			impl.runPipeline(tc.pid)
 
-			count := impl.getRowCount()
+			count := impl.DB.GetRowsCount()
 			if  count != tc.countRows {
-				tt.Errorf("leveldb rows shoude be %s, but we have rows \"%v\"", tc.countRows, count)
+				tt.Errorf("storage_leveldb rows shoude be %s, but we have rows \"%v\"", tc.countRows, count)
 			}
 
 			// sort expected
@@ -191,7 +191,7 @@ func TestRunEngine(t *testing.T) {
 			if strings.Join(tc.expCallerCmd, ",") != strings.Join(m.data, ",") {
 				tt.Errorf("expected equals, but \"%v\" != \"%v\"", tc.expCallerCmd, m.data)
 			}
-			//delete leveldb
+			//delete storage_leveldb
 		})
 
 		//err = os.Remove(DBPath)

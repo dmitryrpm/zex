@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/grpclog"
 	"zex/proto"
 	"zex/server"
-	"zex/storage"
+	"zex/storage_leveldb"
 )
 
 var (
@@ -23,7 +23,7 @@ func main() {
 		grpclog.Fatalf("failed to listen: %v", err)
 	}
 
-	stLevelDB, err := storage.NewLevelDB("/tmp/zex.db")
+	stLevelDB, err := storage_leveldb.New("/tmp/zex.db")
 
 	if err != nil {
 		panic("incorrect create level db")

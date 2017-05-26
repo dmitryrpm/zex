@@ -26,7 +26,7 @@ type Invoker func(ctx context.Context, method string, args, reply interface{}, c
 
 
 // New MOCK constructor for Tests
-func NewMock(invoker Invoker, DB storage.Storager) *zexServerStruct {
+func NewMock(invoker Invoker, DB storage.Database) *zexServerStruct {
 	return &zexServerStruct{
 		lockForRegger:    &sync.RWMutex{},
 		RegisterServices: make(map[string]*grpc.ClientConn),
@@ -41,7 +41,7 @@ func NewMock(invoker Invoker, DB storage.Storager) *zexServerStruct {
 
 
 // New constructor
-func New(DB storage.Storager) zex.ZexServer {
+func New(DB storage.Database) zex.ZexServer {
 
 	return &zexServerStruct{
 		lockForRegger:    &sync.RWMutex{},
@@ -64,8 +64,8 @@ type zexServerStruct struct {
 	lockForPather    *sync.RWMutex
 	PathToServices   map[string][]string
 
-	Invoke           Invoker
-	DB               storage.Storager
+	Invoke Invoker
+	DB     storage.Database
 }
 
 
@@ -188,7 +188,7 @@ func (s *zexServerStruct) Pipeline(stream zex.Zex_PipelineServer) error {
 			err = transation.Commit()
 
 			if err != nil {
-				grpclog.Printf("can't set value to leveldb %s: %v", pipeline, err)
+				grpclog.Printf("can't set value to storage_leveldb %s: %v", pipeline, err)
 				return nil
 			}
 
@@ -218,7 +218,7 @@ func (s *zexServerStruct) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Emp
 
 // Run pipeline
 func (s *zexServerStruct) runPipeline(pid string) {
-	grpclog.Printf("Start RunPipeline uuid %s, leveldb count %d", pid, s.DB.GetRowsCount())
+	grpclog.Printf("Start RunPipeline uuid %s, storage_leveldb count %d", pid, s.DB.GetRowsCount())
 
 	// Get context for cancel all goroutine calls
 	var (
@@ -229,7 +229,7 @@ func (s *zexServerStruct) runPipeline(pid string) {
 	// create batch transaction
 	transation := s.DB.NewTransaction()
 
-	// iterate to leveldb
+	// iterate to storage_leveldb
 	iter := s.DB.GetIterator()
 	for iter.Next() {
 		key := iter.Key()
@@ -277,7 +277,7 @@ func (s *zexServerStruct) runPipeline(pid string) {
 		}
 	}
 
-	grpclog.Printf("runPipeline %s was done, leveldb cleanup, all rows %d", pid, s.DB.GetRowsCount())
+	grpclog.Printf("runPipeline %s was done, storage_leveldb cleanup, all rows %d", pid, s.DB.GetRowsCount())
 
 }
 
