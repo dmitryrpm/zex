@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/reflection"
 	"sync"
-	zex "github.com/dmitryrpm/zex/proto"
+	"github.com/dmitryrpm/zex/proto"
 	"github.com/dmitryrpm/zex/examples/services/A/proto"
 )
 

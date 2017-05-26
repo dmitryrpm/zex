@@ -1,7 +1,9 @@
 package storage_leveldb
 
-import "github.com/syndtr/goleveldb/leveldb"
-import "zex/storage"
+import (
+	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/dmitryrpm/zex/storage"
+)
 
 // New constructor LevelDB
 func New(path string) (db *DBLevelStorage, err error) {

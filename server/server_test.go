@@ -167,22 +167,22 @@ func TestRunEngine(t *testing.T) {
 
 
 			// example for show how work with options
-			dbMock := storage.DbLevelStorage{}
-			impl := NewMock(m.Invoke, &dbMock)
-			impl.PathToServices = tc.setPathToServices
-			impl.RegisterServices = tc.setRegisterServices
+			//dbMock := storage.DbLevelStorage{}
+			//impl := NewMock(m.Invoke, &dbMock)
+			//impl.PathToServices = tc.setPathToServices
+			//impl.RegisterServices = tc.setRegisterServices
 
 
 			//for _, cmd := range tc.pipeline {
 			//	impl.DB.Put([]byte(tc.pid + "_" + cmd.Path), []byte(cmd.Body), nil)
 			//}
 
-			impl.runPipeline(tc.pid)
-
-			count := impl.DB.GetRowsCount()
-			if  count != tc.countRows {
-				tt.Errorf("storage_leveldb rows shoude be %s, but we have rows \"%v\"", tc.countRows, count)
-			}
+			//impl.runPipeline(tc.pid)
+			//
+			////count := impl.DB.GetRowsCount()
+			//if  count != tc.countRows {
+			//	tt.Errorf("storage_leveldb rows shoude be %s, but we have rows \"%v\"", tc.countRows, count)
+			//}
 
 			// sort expected
 			sort.Strings(tc.expCallerCmd)
