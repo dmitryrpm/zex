@@ -12,7 +12,9 @@ import (
 	"time"
 	"google.golang.org/grpc/grpclog"
 	"errors"
+	"zex/storage"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/opt"
 )
 
 
@@ -83,6 +85,17 @@ type MockZexServer struct {
 	expCallerCmd []string
 }
 
+type MockDbLevel struct {
+	batch *leveldb.Batch
+}
+
+
+func (db *MockDbLevel) Write(batch *leveldb.Batch, wo *opt.WriteOptions) error {
+	if batch == nil || batch.Len() == 0 {
+		return errors.New("batch null")
+	}
+	return nil
+}
 
 func TestRunEngine(t *testing.T) {
 
@@ -141,6 +154,9 @@ func TestRunEngine(t *testing.T) {
 	}
 
 	for _, tc := range zexMocks {
+		//DBPath := "/tmp/zex.db.test"
+		//err := os.Remove(DBPath)
+		//levelDB, _ := storage_leveldb.OpenFile(DBPath, nil)
 		t.Run(tc.desc, func(tt *testing.T) {
 			m := &mockInvoker{
 				lock:     &sync.Mutex{},
@@ -151,20 +167,21 @@ func TestRunEngine(t *testing.T) {
 
 
 			// example for show how work with options
-			levelDB, _ := leveldb.OpenFile("/tmp/zex.db.test" + tc.desc, nil)
-			impl := NewMock(m.Invoke, levelDB)
+			dbMock := storage.DbLevelStorage{}
+			impl := NewMock(m.Invoke, &dbMock)
 			impl.PathToServices = tc.setPathToServices
 			impl.RegisterServices = tc.setRegisterServices
 
-			for _, cmd := range tc.pipeline {
-				impl.DB.Put([]byte(tc.pid + "_" + cmd.Path), []byte(cmd.Body), nil)
-			}
+
+			//for _, cmd := range tc.pipeline {
+			//	impl.DB.Put([]byte(tc.pid + "_" + cmd.Path), []byte(cmd.Body), nil)
+			//}
 
 			impl.runPipeline(tc.pid)
 
-			count := impl.getRowCount()
+			count := impl.DB.GetRowsCount()
 			if  count != tc.countRows {
-				tt.Errorf("leveldb rows shoude be %s, but we have rows \"%v\"", tc.countRows, count)
+				tt.Errorf("storage_leveldb rows shoude be %s, but we have rows \"%v\"", tc.countRows, count)
 			}
 
 			// sort expected
@@ -174,8 +191,13 @@ func TestRunEngine(t *testing.T) {
 			if strings.Join(tc.expCallerCmd, ",") != strings.Join(m.data, ",") {
 				tt.Errorf("expected equals, but \"%v\" != \"%v\"", tc.expCallerCmd, m.data)
 			}
-			//delete leveldb
+			//delete storage_leveldb
 		})
+
+		//err = os.Remove(DBPath)
+		//if err != nil {
+		//	fmt.Println(err)
+		//}
 	}
 
 

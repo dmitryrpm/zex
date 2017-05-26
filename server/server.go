@@ -6,12 +6,12 @@ package server
 import (
 	"errors"
 	"fmt"
-	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/pborman/uuid"
-	zex "github.com/dmitryrpm/zex/proto"
+	"github.com/dmitryrpm/zex/proto"
+	"github.com/dmitryrpm/zex/storage"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
@@ -24,8 +24,9 @@ import (
 // Invoker function for mock
 type Invoker func(ctx context.Context, method string, args, reply interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) error
 
-// New MOCK constructor for ZexServer
-func NewMock(invoker Invoker, levelDB *leveldb.DB) *zexServerStruct {
+
+// New MOCK constructor for Tests
+func NewMock(invoker Invoker, DB storage.Database) *zexServerStruct {
 	return &zexServerStruct{
 		lockForRegger:    &sync.RWMutex{},
 		RegisterServices: make(map[string]*grpc.ClientConn),
@@ -34,12 +35,13 @@ func NewMock(invoker Invoker, levelDB *leveldb.DB) *zexServerStruct {
 		PathToServices:   make(map[string][]string),
 
 		Invoke:           invoker,
-		DB:               levelDB,
+		DB:               DB,
 	}
 }
 
+
 // New constructor
-func New(DB *leveldb.DB) zex.ZexServer {
+func New(DB storage.Database) zex.ZexServer {
 
 	return &zexServerStruct{
 		lockForRegger:    &sync.RWMutex{},
@@ -53,6 +55,7 @@ func New(DB *leveldb.DB) zex.ZexServer {
 	}
 }
 
+
 // zexServerStruct structure
 type zexServerStruct struct {
 	lockForRegger    *sync.RWMutex
@@ -61,9 +64,10 @@ type zexServerStruct struct {
 	lockForPather    *sync.RWMutex
 	PathToServices   map[string][]string
 
-	Invoke           Invoker
-	DB               *leveldb.DB
+	Invoke Invoker
+	DB     storage.Database
 }
+
 
 // Register service interface impl
 func (s *zexServerStruct) Register(ctx context.Context, service *zex.Service) (*zex.Empty, error) {
@@ -159,6 +163,7 @@ func (s *zexServerStruct) Register(ctx context.Context, service *zex.Service) (*
 	return &zex.Empty{}, nil
 }
 
+
 // Pipeline service interface impl
 func (s *zexServerStruct) Pipeline(stream zex.Zex_PipelineServer) error {
 	grpclog.Printf("listen stream pipeline")
@@ -166,9 +171,9 @@ func (s *zexServerStruct) Pipeline(stream zex.Zex_PipelineServer) error {
 	pid := uuid.New()
 
 	pipeline := make([]*zex.Cmd, 0)
-	batch := new(leveldb.Batch)
 
 	// open stream, after close run pipeline
+	transation := s.DB.NewTransaction()
 	for {
 		cmd, err := stream.Recv()
 
@@ -180,10 +185,10 @@ func (s *zexServerStruct) Pipeline(stream zex.Zex_PipelineServer) error {
 			}
 
 			// set transation atomic
-			err = s.DB.Write(batch, nil)
+			err = transation.Commit()
 
 			if err != nil {
-				grpclog.Printf("can't set value to leveldb %s: %v", pipeline, err)
+				grpclog.Printf("can't set value to storage_leveldb %s: %v", pipeline, err)
 				return nil
 			}
 
@@ -196,7 +201,7 @@ func (s *zexServerStruct) Pipeline(stream zex.Zex_PipelineServer) error {
 			return err
 		} else {
 			grpclog.Println("Add cmd to pipeline", cmd)
-			batch.Put([]byte(pid + "_" +  cmd.Path), cmd.Body)
+			transation.Put([]byte(pid + "_" +  cmd.Path), cmd.Body)
 			pipeline = append(pipeline, cmd)
 		}
 	}
@@ -211,19 +216,9 @@ func (s *zexServerStruct) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Emp
 	return &zex.Empty{}, nil
 }
 
-// Get row count in leveldb
-// FIXME find API in LEVELDB
-func (s *zexServerStruct) getRowCount() int {
-	var levelDbLen int
-	i := s.DB.NewIterator(nil, nil)
-	for i.Next() {levelDbLen++}
-	i.Release()
-	return levelDbLen
-}
-
 // Run pipeline
 func (s *zexServerStruct) runPipeline(pid string) {
-	grpclog.Printf("Start RunPipeline uuid %s, leveldb count %d", pid, s.getRowCount())
+	grpclog.Printf("Start RunPipeline uuid %s, storage_leveldb count %d", pid, s.DB.GetRowsCount())
 
 	// Get context for cancel all goroutine calls
 	var (
@@ -232,15 +227,16 @@ func (s *zexServerStruct) runPipeline(pid string) {
 	)
 
 	// create batch transaction
-	batch := new(leveldb.Batch)
-	// iterate to leveldb
-	iter := s.DB.NewIterator(nil, nil)
+	transation := s.DB.NewTransaction()
+
+	// iterate to storage_leveldb
+	iter := s.DB.GetIterator()
 	for iter.Next() {
 		key := iter.Key()
 		if strings.Contains(string(key), pid) {
 			value := iter.Value()
 			ss := strings.Split(string(key), "_")
-			batch.Delete(key)
+			transation.Delete(key)
 			// update pipepile
 			pipeline = append(pipeline, &zex.Cmd{zex.CmdType(1), ss[1], value})
 		}
@@ -273,7 +269,7 @@ func (s *zexServerStruct) runPipeline(pid string) {
 		if lengthPipiline == 0 {
 			grpclog.Printf("all command without errors")
 			close(errC)
-			err := s.DB.Write(batch, nil)
+			err := transation.Commit()
 			if err != nil {
 				grpclog.Printf("level db pid %s has incorrect status %s", pid, err)
 				return
@@ -281,7 +277,7 @@ func (s *zexServerStruct) runPipeline(pid string) {
 		}
 	}
 
-	grpclog.Printf("runPipeline %s was done, leveldb cleanup, all rows %d", pid, s.getRowCount())
+	grpclog.Printf("runPipeline %s was done, storage_leveldb cleanup, all rows %d", pid, s.DB.GetRowsCount())
 
 }
 
