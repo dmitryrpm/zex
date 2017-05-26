@@ -5,25 +5,29 @@ import (
 	"github.com/dmitryrpm/zex/storage"
 )
 
-// New constructor LevelDB
-func New(path string) (db *DBLevelStorage, err error) {
+// ---------------------------
+// LevelDB constructor
+// ---------------------------
+func New(path string) (db *LevelDB, err error) {
 	levelDB, err := leveldb.OpenFile(path, nil)
 	if err != nil{
 		return
 	}
-	return &DBLevelStorage{DB: levelDB}, err
+	return &LevelDB{DB: levelDB}, err
 }
 
-// Storage LevelDB structure
-type DBLevelStorage struct {
+// ---------------------------
+// LevelDB structure
+//---------------------------
+type LevelDB struct {
 	DB *leveldb.DB
 }
 
-func (st *DBLevelStorage) GetIterator() storage.Iterator {
+func (st *LevelDB) GetIterator() storage.Iterator {
 	return st.DB.NewIterator(nil, nil)
 }
 
-func (st *DBLevelStorage) GetRowsCount() int {
+func (st *LevelDB) GetRowsCount() int {
 	var levelDbLen int
 	i := st.DB.NewIterator(nil, nil)
 	for i.Next() {levelDbLen++}
@@ -31,28 +35,29 @@ func (st *DBLevelStorage) GetRowsCount() int {
 	return levelDbLen
 }
 
-
-func (st *DBLevelStorage) NewTransaction() storage.Transaction {
-	return &LevelDBTransaction{
+func (st *LevelDB) NewTransaction() storage.Transaction {
+	return &levelDBTransaction{
 		storage: st,
 		batch: new(leveldb.Batch),
 	}
 }
 
-// Transaction LevelDB structure
-type LevelDBTransaction struct {
-	storage     *DBLevelStorage
+//--------------------------------
+// LevelDB transaction structure
+//-------------------------------
+type levelDBTransaction struct {
+	storage     *LevelDB
 	batch  *leveldb.Batch
 }
 
-func (t *LevelDBTransaction) Put(k []byte, v []byte) {
+func (t *levelDBTransaction) Put(k []byte, v []byte) {
 	t.batch.Put(k, v)
 }
 
-func (t *LevelDBTransaction) Delete(k []byte) {
+func (t *levelDBTransaction) Delete(k []byte) {
 	t.batch.Delete(k)
 }
 
-func (t *LevelDBTransaction) Commit() error {
+func (t *levelDBTransaction) Commit() error {
 	return t.storage.DB.Write(t.batch, nil)
 }
