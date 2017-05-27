@@ -74,6 +74,10 @@ func (t *levelDBTransactionMock) Commit() error {
 // Iterator Mock
 // ---------------------------
 
+func NewMockIterator(cmdSlice *[]zex.Cmd) storage.Iterator {
+	return &MockIterator{pipeline: *cmdSlice, current: -1}
+}
+
 type MockIterator struct {
 	pipeline    []zex.Cmd
 	current     int
@@ -111,7 +115,3 @@ func (i *MockIterator) Value() []byte {
 //func (i *MockIterator) Last() bool           { i.rErr(); return false }
 //func (i *MockIterator) Seek(key []byte) bool { i.rErr(); return false }
 //func (i *MockIterator) Error() error         { return i.err }
-
-func NewMockIterator(cmdSlice *[]zex.Cmd) storage.Iterator {
-	return &MockIterator{pipeline: *cmdSlice, current: -1}
-}

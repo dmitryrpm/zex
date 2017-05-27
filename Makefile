@@ -1,5 +1,14 @@
-run:
-	go run main.go
+run_zex:
+	go run cmd/zex/main.go
+
+run_a:
+	go run cmd/service/main.go
+
+run_b:
+	go run cmd/service/main.go
+
+run_c:
+	go run cmd/service/main.go
 
 requires:
 	go get -u github.com/golang/protobuf/proto

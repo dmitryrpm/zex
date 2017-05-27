@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc/reflection"
 	"sync"
 	"github.com/dmitryrpm/zex/proto"
-	"github.com/dmitryrpm/zex/examples/services/A/proto"
+	"github.com/dmitryrpm/zex/cmd/service/proto"
 )
 
 var (

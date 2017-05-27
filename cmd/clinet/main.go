@@ -6,7 +6,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
-	a "github.com/dmitryrpm/zex/examples/services/A/proto"
+	a "github.com/dmitryrpm/zex/cmd/service/proto"
 	"github.com/golang/protobuf/proto"
 	"github.com/dmitryrpm/zex/proto"
 )
