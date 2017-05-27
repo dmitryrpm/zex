@@ -2,7 +2,7 @@ package server
 
 import (
 	"fmt"
-	zex "github.com/dmitryrpm/zex/proto"
+	"github.com/dmitryrpm/zex/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"sort"
