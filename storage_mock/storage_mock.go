@@ -51,7 +51,8 @@ type levelDBTransactionMock struct {
 }
 
 func (t *levelDBTransactionMock) Put(k []byte, v []byte) {
-	cmd := zex.Cmd{zex.CmdType_INVOKE, string(k), v}
+	k_str := string(k)
+	cmd := zex.Cmd{zex.CmdType_INVOKE, k_str, v}
 	t.pipeline = append(
 		t.pipeline, cmd)
 }

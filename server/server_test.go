@@ -194,6 +194,6 @@ func TestRunEngine(t *testing.T) {
 
 
 	t.Run("test Registry services", func(tt *testing.T) {
-
+		// FIXME add tests
 	})
 }

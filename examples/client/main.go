@@ -44,14 +44,18 @@ func main() {
 	body2, _ := proto.Marshal(req2)
 	body3, _ := proto.Marshal(req3)
 
-	// три раза!
-	if err := stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/A.A/CallA", body1}); err != nil {
+	cmd1 := &zex.Cmd{zex.CmdType_INVOKE, "/A.A/CallA", body1}
+	if err := stream.Send(cmd1); err != nil {
 		grpclog.Fatalf("%v.Send(%v) = %v", stream, "/A.A/CallA", err)
 	}
-	if err := stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/A.A/CallB", body2}); err != nil {
+
+	cmd2 := &zex.Cmd{zex.CmdType_INVOKE, "/A.A/CallB", body2}
+	if err := stream.Send(cmd2); err != nil {
 		grpclog.Fatalf("%v.Send(%v) = %v", stream, "/A.A/CallB", err)
 	}
-	if err := stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/A.A/CallC", body3}); err != nil {
+
+	cmd3 := &zex.Cmd{zex.CmdType_INVOKE, "/A.A/CallC", body3}
+	if err := stream.Send(cmd3); err != nil {
 		grpclog.Fatalf("%v.Send(%v) = %v", stream, "/A.A/CallC", err)
 	}
 

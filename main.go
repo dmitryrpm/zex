@@ -30,11 +30,8 @@ func main() {
 	}
 
 	var opts []grpc.ServerOption
-	grpcServer := grpc.NewServer(opts...)
-
-
+	s := grpc.NewServer(opts...)
 	zs := server.New(stLevelDB)
-
-	zex.RegisterZexServer(grpcServer, zs)
-	grpcServer.Serve(listener)
+	zex.RegisterZexServer(s, zs)
+	s.Serve(listener)
 }

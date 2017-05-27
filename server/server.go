@@ -26,8 +26,8 @@ type Invoker func(ctx context.Context, method string, args, reply interface{}, c
 
 
 // New MOCK constructor for Tests
-func NewMock(invoker Invoker, DB storage.Database) *zexServerStruct {
-	return &zexServerStruct{
+func NewMock(invoker Invoker, DB storage.Database) *zexServer {
+	return &zexServer{
 		lockForRegger:    &sync.RWMutex{},
 		RegisterServices: make(map[string]*grpc.ClientConn),
 
@@ -43,7 +43,7 @@ func NewMock(invoker Invoker, DB storage.Database) *zexServerStruct {
 // New constructor
 func New(DB storage.Database) zex.ZexServer {
 
-	return &zexServerStruct{
+	return &zexServer{
 		lockForRegger:    &sync.RWMutex{},
 		RegisterServices: make(map[string]*grpc.ClientConn),
 
@@ -56,8 +56,8 @@ func New(DB storage.Database) zex.ZexServer {
 }
 
 
-// zexServerStruct structure
-type zexServerStruct struct {
+// zexServer structure
+type zexServer struct {
 	lockForRegger    *sync.RWMutex
 	RegisterServices map[string]*grpc.ClientConn
 
@@ -70,7 +70,7 @@ type zexServerStruct struct {
 
 
 // Register service interface impl
-func (s *zexServerStruct) Register(ctx context.Context, service *zex.Service) (*zex.Empty, error) {
+func (s *zexServer) Register(ctx context.Context, service *zex.Service) (*zex.Empty, error) {
 	grpclog.Printf("Start registraion service in Zex (%s, %s)", service.Name, service.Addr)
 	// ---------------------
 	// Do reflection request
@@ -165,7 +165,7 @@ func (s *zexServerStruct) Register(ctx context.Context, service *zex.Service) (*
 
 
 // Pipeline service interface impl
-func (s *zexServerStruct) Pipeline(stream zex.Zex_PipelineServer) error {
+func (s *zexServer) Pipeline(stream zex.Zex_PipelineServer) error {
 	grpclog.Printf("listen stream pipeline")
 
 	pid := uuid.New()
@@ -210,14 +210,14 @@ func (s *zexServerStruct) Pipeline(stream zex.Zex_PipelineServer) error {
 }
 
 // Subscribe service interface impl
-func (s *zexServerStruct) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, error) {
+func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, error) {
 	grpclog.Printf("Start Subscribe uuid %s", pid.ID)
 
 	return &zex.Empty{}, nil
 }
 
 // Run pipeline
-func (s *zexServerStruct) runPipeline(pid string) {
+func (s *zexServer) runPipeline(pid string) {
 	grpclog.Printf("Start RunPipeline uuid %s, storage_leveldb count %d", pid, s.DB.GetRowsCount())
 
 	// Get context for cancel all goroutine calls
@@ -235,10 +235,11 @@ func (s *zexServerStruct) runPipeline(pid string) {
 		key := iter.Key()
 		if strings.Contains(string(key), pid) {
 			value := iter.Value()
-			ss := strings.Split(string(key), "_")
+			ss := strings.Split(string(key), "_")[1]
 			transation.Delete(key)
 			// update pipepile
-			pipeline = append(pipeline, &zex.Cmd{zex.CmdType(1), ss[1], value})
+			zt := zex.CmdType(1)
+			pipeline = append(pipeline, &zex.Cmd{zt, ss,value})
 		}
 	}
 	iter.Release()
@@ -286,7 +287,7 @@ func (s *zexServerStruct) runPipeline(pid string) {
 }
 
 // Call command service
-func (s *zexServerStruct) callCmd(ctx context.Context, cmd *zex.Cmd, errC chan error) {
+func (s *zexServer) callCmd(ctx context.Context, cmd *zex.Cmd, errC chan error) {
 	var (
 		out        = &any.Any{}
 		cc         *grpc.ClientConn
