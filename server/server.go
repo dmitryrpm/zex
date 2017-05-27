@@ -246,6 +246,10 @@ func (s *zexServerStruct) runPipeline(pid string) {
 	lengthPipiline := len(pipeline)
 	grpclog.Printf("find %d pipeline commands", lengthPipiline)
 
+	if lengthPipiline == 0 {
+		grpclog.Println("no find pipelines, cancel")
+		return
+	}
 	// Create chan errC and wait doing all goroutine
 	errC := make(chan error, lengthPipiline)
 
@@ -319,6 +323,7 @@ func (s *zexServerStruct) callCmd(ctx context.Context, cmd *zex.Cmd, errC chan e
 	grpclog.Println("start ", serviceKey, cmd.Path)
 	in := byteProto(cmd.Body)
 	// The grpc.Invoke or Mock in test returns an error, or nil to chan
+	grpclog.Println("Start wait errors or successed")
 	errC <- s.Invoke(ctx, cmd.Path, &in, out, cc)
 }
 

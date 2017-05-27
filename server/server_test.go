@@ -12,9 +12,9 @@ import (
 	"time"
 	"google.golang.org/grpc/grpclog"
 	"errors"
-	"zex/storage"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
+	"github.com/dmitryrpm/zex/storage_mock"
 )
 
 
@@ -154,9 +154,6 @@ func TestRunEngine(t *testing.T) {
 	}
 
 	for _, tc := range zexMocks {
-		//DBPath := "/tmp/zex.db.test"
-		//err := os.Remove(DBPath)
-		//levelDB, _ := storage_leveldb.OpenFile(DBPath, nil)
 		t.Run(tc.desc, func(tt *testing.T) {
 			m := &mockInvoker{
 				lock:     &sync.Mutex{},
@@ -167,22 +164,23 @@ func TestRunEngine(t *testing.T) {
 
 
 			// example for show how work with options
-			//dbMock := storage.DbLevelStorage{}
-			//impl := NewMock(m.Invoke, &dbMock)
-			//impl.PathToServices = tc.setPathToServices
-			//impl.RegisterServices = tc.setRegisterServices
+			storageMock, _ := storage_mock.NewMock("test")
+			impl := NewMock(m.Invoke, storageMock)
+			impl.PathToServices = tc.setPathToServices
+			impl.RegisterServices = tc.setRegisterServices
 
+			tr := storageMock.NewTransaction()
+			for _, cmd := range tc.pipeline {
+				str := tc.pid + "_" + cmd.Path
+				tr.Put([]byte(str), []byte(cmd.Body))
+			}
+			tr.Commit()
 
-			//for _, cmd := range tc.pipeline {
-			//	impl.DB.Put([]byte(tc.pid + "_" + cmd.Path), []byte(cmd.Body), nil)
-			//}
-
-			//impl.runPipeline(tc.pid)
-			//
-			////count := impl.DB.GetRowsCount()
-			//if  count != tc.countRows {
-			//	tt.Errorf("storage_leveldb rows shoude be %s, but we have rows \"%v\"", tc.countRows, count)
-			//}
+			impl.runPipeline(tc.pid)
+			count := impl.DB.GetRowsCount()
+			if  count != tc.countRows {
+				tt.Errorf("storage_mock rows shoude be %s, but we have rows \"%v\"", tc.countRows, count)
+			}
 
 			// sort expected
 			sort.Strings(tc.expCallerCmd)
@@ -191,13 +189,7 @@ func TestRunEngine(t *testing.T) {
 			if strings.Join(tc.expCallerCmd, ",") != strings.Join(m.data, ",") {
 				tt.Errorf("expected equals, but \"%v\" != \"%v\"", tc.expCallerCmd, m.data)
 			}
-			//delete storage_leveldb
 		})
-
-		//err = os.Remove(DBPath)
-		//if err != nil {
-		//	fmt.Println(err)
-		//}
 	}
 
 
