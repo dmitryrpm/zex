@@ -4,12 +4,6 @@ run_zex:
 run_a:
 	go run cmd/service/main.go
 
-run_b:
-	go run cmd/service/main.go
-
-run_c:
-	go run cmd/service/main.go
-
 requires:
 	go get -u github.com/golang/protobuf/proto
 	go get -u golang.org/x/net/context
