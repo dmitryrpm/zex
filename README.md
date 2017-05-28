@@ -14,20 +14,39 @@ Task proxymanager for grpc services
 * файл тест мы должны зарегать три сервиса A,B,C и вызвать у каждого по три метода CallA,CallB,CallC и у B CallErr в рамках одного пайплайна и должет быть файл и отмена контекста и вызовов у других
 * Body нужно передавать при вызыве сервиса как proto.Marsheler - тут простая обертка над bytes которая возращает сами байты
 
+#### Install grpc
 
-# Запуск
-make requires
-make run_zex
-
-### Install grpc
-Make sure you grab the latest version
+```
 curl -OL https://github.com/google/protobuf/releases/download/v3.2.0/protoc-3.2.0-linux-x86_64.zip
 unzip protoc-3.2.0-linux-x86_64.zip -d protoc3
 sudo mv protoc3/bin/protoc /usr/bin/protoc
+```
 
-### Install gp-grpc
-go get -u github.com/golang/protobuf/{proto,protoc-gen-go}
-go get -u google.golang.org/grpc
-
-### Compile grpc-protofiles
+#### Compile grpc-protofiles
+```
+# cd to proto dir
 protoc --go_out=plugins=grpc:. *.proto
+```
+
+#### Run
+```
+# install all requires
+make requires
+
+# run zex service
+make run_zex
+
+# run service A
+make run_a
+
+# run client
+make run_client
+
+```
+
+#### Run tests
+```
+make run test
+```
+
+

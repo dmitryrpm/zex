@@ -5,7 +5,7 @@ run_a:
 	go run cmd/service/main.go
 
 requires:
-	go get -u github.com/golang/protobuf/proto
+	github.com/golang/protobuf/{proto,protoc-gen-go}
 	go get -u golang.org/x/net/context
 	go get -u google.golang.org/grpc
 	go get -u google.golang.org/grpc/metadata
