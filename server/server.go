@@ -64,8 +64,8 @@ type zexServer struct {
 	lockForPather    *sync.RWMutex
 	PathToServices   map[string][]string
 
-	Invoke Invoker
-	DB     storage.Database
+	Invoke           Invoker
+	DB               storage.Database
 }
 
 
@@ -184,7 +184,7 @@ func (s *zexServer) Pipeline(stream zex.Zex_PipelineServer) error {
 				return err
 			}
 
-			// set transation atomic
+			// set transaction atomic
 			err = transation.Commit()
 
 			if err != nil {
@@ -201,7 +201,8 @@ func (s *zexServer) Pipeline(stream zex.Zex_PipelineServer) error {
 			return err
 		} else {
 			grpclog.Println("Add cmd to pipeline", cmd)
-			transation.Put([]byte(pid + "_" +  cmd.Path), cmd.Body)
+			transation.Put([]byte(pid + "_" + cmd.Path), cmd.Body)
+			transation.Put([]byte(pid + "_status"), []byte(nil))
 			pipeline = append(pipeline, cmd)
 		}
 	}
@@ -211,9 +212,58 @@ func (s *zexServer) Pipeline(stream zex.Zex_PipelineServer) error {
 
 // Subscribe service interface impl
 func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, error) {
-	grpclog.Printf("Start Subscribe uuid %s", pid.ID)
+	grpclog.Printf("subscribe uuid %s", pid.ID)
 
+	if s.isExistsPid(pid.ID) {
+		// If pid exists, need check status error or invoke
+		errC := make(chan error, 1)
+		go s.checkPidStatus(pid.ID, errC)
+		for err := range errC {
+			close(errC)
+			grpclog.Printf("\n\nsubscribe return %s\n\n", err)
+			return &zex.Empty{}, err
+		}
+	}
+	// If pid does not exist, this is done correct
 	return &zex.Empty{}, nil
+}
+
+func (s *zexServer) isExistsPid(pid string) bool {
+	iter := s.DB.GetIterator()
+	for iter.Next() {
+		key := iter.Key()
+		if strings.Contains(string(key), pid) {
+			return true
+		}
+	}
+	iter.Release()
+	return false
+}
+
+// Polling status
+func (s *zexServer) checkPidStatus(pid string, c chan error) {
+	str := pid + "_status"
+	for {
+		is_exists := false
+		iter := s.DB.GetIterator()
+		for iter.Next() {
+			key := string(iter.Key())
+			if key == str {
+				grpclog.Printf("pid %s with key %s has status '%s'", pid, string(key), string(iter.Value()))
+				if iter.Value() != nil {
+					c <- errors.New(string(iter.Value()))
+				} else {
+					c <- nil
+				}
+				return
+			}
+		}
+		if is_exists {
+			c <- nil
+			return
+		}
+		iter.Release()
+	}
 }
 
 // Run pipeline
@@ -233,9 +283,11 @@ func (s *zexServer) runPipeline(pid string) {
 	iter := s.DB.GetIterator()
 	for iter.Next() {
 		key := iter.Key()
-		if strings.Contains(string(key), pid) {
+		str_key := string(key)
+		if strings.Contains(str_key, pid) && !strings.Contains(str_key, "_status")  {
+			grpclog.Printf(str_key)
 			value := iter.Value()
-			ss := strings.Split(string(key), "_")[1]
+			ss := strings.Split(str_key, "_")[1]
 			transation.Delete(key)
 			// update pipepile
 			zt := zex.CmdType(1)
@@ -266,13 +318,26 @@ func (s *zexServer) runPipeline(pid string) {
 		// If one of this fail, all failed
 		if err != nil {
 			grpclog.Printf("command was failed by id %s: %s", pid, err)
+
+			// Update status if incorrect request
+			iter := s.DB.GetIterator()
+			for iter.Next() {
+				key := iter.Key()
+				if string(key) == pid + "_status" {
+					transation = s.DB.NewTransaction()
+					transation.Put(key, []byte(err.Error()))
+					transation.Commit()
+				}
+			}
+			iter.Release()
 			cancel()
+
 			return
 		}
 
 		// Close context if ok
 		if lengthPipiline == 0 {
-			grpclog.Printf("all command without errors")
+			grpclog.Printf("all command done")
 			close(errC)
 			err := transation.Commit()
 			if err != nil {
@@ -302,7 +367,7 @@ func (s *zexServer) callCmd(ctx context.Context, cmd *zex.Cmd, errC chan error) 
 	s.lockForPather.RUnlock()
 
 	if !err {
-		errC <- errors.New("incorrect get serviceKey, this blocked")
+		errC <- errors.New("incorrect get serviceKey")
 	}
 
 	// if not found
@@ -325,7 +390,11 @@ func (s *zexServer) callCmd(ctx context.Context, cmd *zex.Cmd, errC chan error) 
 	in := byteProto(cmd.Body)
 	// The grpc.Invoke or Mock in test returns an error, or nil to chan
 	grpclog.Println("Start wait errors or successed")
-	errC <- s.Invoke(ctx, cmd.Path, &in, out, cc)
+	ierror := s.Invoke(ctx, cmd.Path, &in, out, cc)
+	if ierror != nil {
+		grpclog.Printf("incorrect invoke %s", ierror)
+	}
+	errC <- ierror
 }
 
 

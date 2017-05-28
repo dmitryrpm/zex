@@ -10,6 +10,7 @@ import (
 	"sync"
 	"github.com/dmitryrpm/zex/proto"
 	"github.com/dmitryrpm/zex/cmd/service/proto"
+	//"time"
 )
 
 var (
@@ -20,17 +21,17 @@ var (
 // Registry service to Zex
 func registerZex(client zex.ZexClient, service *zex.Service) {
 	grpclog.Printf("Start registry service in Zex (%s, %s)", service.Name, service.Addr)
-	z, err := client.Register(context.Background(), service)
+	_, err := client.Register(context.Background(), service)
 	if err != nil {
 		grpclog.Fatalf("%v.Registry(_) = _, %v: ", client, err)
 	}
-	grpclog.Println(z)
 }
 
 type AServer struct{}
 
 func (s *AServer) CallA(ctx context.Context, empty *A.Req) (*A.Empty, error) {
 	defer grpclog.Printf("Call service A.%s with req", empty)
+	//time.Sleep(100 * time.Second)
 	return &A.Empty{}, nil
 
 }
@@ -81,7 +82,7 @@ func main() {
 		grpclog.Fatalf("fail to dial: %v", err)
 	}
 	zexClient := zex.NewZexClient(zexConn)
-	registerZex(zexClient, &zex.Service{Name: "serviceA1", Addr: *serverAddr})
+	registerZex(zexClient, &zex.Service{Name: "A", Addr: *serverAddr})
 	grpclog.Println("registed... close connection")
 	zexConn.Close()
 

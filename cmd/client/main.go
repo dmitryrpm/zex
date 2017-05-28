@@ -38,11 +38,13 @@ func main() {
 		req1 = &a.Req{Name: "AloxaA"}
 		req2 = &a.Req{Name: "AloxaB"}
 		req3 = &a.Req{Name: "AloxaC"}
+		//req4 = &a.Req{Name: "AloxaD"}
 	)
 
 	body1, _ := proto.Marshal(req1)
 	body2, _ := proto.Marshal(req2)
 	body3, _ := proto.Marshal(req3)
+	//body4, _ := proto.Marshal(req4)
 
 	cmd1 := &zex.Cmd{zex.CmdType_INVOKE, "/A.A/CallA", body1}
 	if err := stream.Send(cmd1); err != nil {
@@ -59,6 +61,12 @@ func main() {
 		grpclog.Fatalf("%v.Send(%v) = %v", stream, "/A.A/CallC", err)
 	}
 
+	//cmd4 := &zex.Cmd{zex.CmdType_INVOKE, "/A.A/CallD", body4}
+	//if err := stream.Send(cmd4); err != nil {
+	//	grpclog.Fatalf("%v.Send(%v) = %v", stream, "/A.A/CallD", err)
+	//}
+
+
 	pid, err := stream.CloseAndRecv()
 	if err == io.EOF {
 		grpclog.Printf("close stream")
@@ -67,4 +75,11 @@ func main() {
 		return
 	}
 	grpclog.Printf("Pipeline close: %v", pid)
+
+	_, str_err := client.Subscribe(context.Background(), pid)
+	if str_err != nil {
+		grpclog.Printf("Pipeline done with error: %s", str_err)
+	} else {
+		grpclog.Printf("Pipeline done correct %s", str_err)
+	}
 }
