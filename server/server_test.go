@@ -97,7 +97,7 @@ func (db *MockDbLevel) Write(batch *leveldb.Batch, wo *opt.WriteOptions) error {
 	return nil
 }
 
-func TestRunEngine(t *testing.T) {
+func TestUnits(t *testing.T) {
 
 	errStrLetency := fmt.Sprintf("waiting %s", timeLetency)
 
@@ -179,7 +179,8 @@ func TestRunEngine(t *testing.T) {
 			impl.runPipeline(tc.pid)
 			count := impl.DB.GetRowsCount()
 			if  count != tc.countRows {
-				tt.Errorf("storage_mock rows shoude be %s, but we have rows \"%v\"", tc.countRows, count)
+				tt.Errorf("storage_mock rows shoude be %s," +
+					" but we have rows \"%v\"", tc.countRows, count)
 			}
 
 			// sort expected
@@ -200,5 +201,4 @@ func TestRunEngine(t *testing.T) {
 	t.Run("test registry services", func(tt *testing.T) {
 		tt.Skip("need add test")
 	})
-
 }

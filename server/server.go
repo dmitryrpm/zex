@@ -42,7 +42,7 @@ func NewMock(invoker Invoker, DB storage.Database) *zexServer {
 
 
 // New constructor
-func New(DB storage.Database) zex.ZexServer {
+func New(DB storage.Database) *zexServer {
 
 	return &zexServer{
 		// Services connection maps A => [connect]
@@ -124,7 +124,7 @@ func (s *zexServer) Register(ctx context.Context, service *zex.Service) (*zex.Em
 
 	// Load FileDescriptorProto from services
 	for _, srv := range info.GetListServicesResponse().GetService() {
-		if srv.Name != "grpc.reflection.v1alpha.ServerReflection" {
+		if srv.Name != "grpc.reflection.v1alpha.ServerReflection" && srv.Name != "zex.Zex" {
 			err = informer.Send(&rpb.ServerReflectionRequest{
 				Host: host,
 				MessageRequest: &rpb.ServerReflectionRequest_FileContainingSymbol{FileContainingSymbol: srv.Name},

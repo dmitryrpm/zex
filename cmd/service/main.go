@@ -27,21 +27,21 @@ func registerZex(client zex.ZexClient, service *zex.Service) {
 	}
 }
 
-type AServer struct{}
+type AService struct{}
 
-func (s *AServer) CallA(ctx context.Context, empty *A.Req) (*A.Empty, error) {
+func (s *AService) CallA(ctx context.Context, empty *A.Req) (*A.Empty, error) {
 	defer grpclog.Printf("Call service A.%s with req", empty)
 	//time.Sleep(100 * time.Second)
 	return &A.Empty{}, nil
 
 }
 
-func (s *AServer) CallB(ctx context.Context, empty *A.Req) (*A.Empty, error) {
+func (s *AService) CallB(ctx context.Context, empty *A.Req) (*A.Empty, error) {
 	grpclog.Printf("Call service A.%s with req", empty)
 	return &A.Empty{}, nil
 }
 
-func (s *AServer) CallC(ctx context.Context, empty *A.Req) (*A.Empty, error) {
+func (s *AService) CallC(ctx context.Context, empty *A.Req) (*A.Empty, error) {
 	grpclog.Printf("Call service A.%s with req", empty)
 	return &A.Empty{}, nil
 }
@@ -57,7 +57,7 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 
-	s := new(AServer)
+	s := new(AService)
 	A.RegisterAServer(grpcServer, s)
 	reflection.Register(grpcServer)
 
