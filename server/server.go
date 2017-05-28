@@ -19,6 +19,7 @@ import (
 	"io"
 	"sync"
 	"strings"
+	"time"
 )
 
 // Invoker function for mock
@@ -44,13 +45,16 @@ func NewMock(invoker Invoker, DB storage.Database) *zexServer {
 func New(DB storage.Database) zex.ZexServer {
 
 	return &zexServer{
+		// Services connection maps A => [connect]
 		lockForRegger:    &sync.RWMutex{},
 		RegisterServices: make(map[string]*grpc.ClientConn),
-
+		// Services path <host>:<port>/<service_name> => <path>
+		// (127.0.0.1:54322/A => /A.A/CallA)
 		lockForPather:    &sync.RWMutex{},
 		PathToServices:   make(map[string][]string),
-
+		// Invocker link
 		Invoke:           grpc.Invoke,
+		// DB link
 		DB:               DB,
 	}
 }
@@ -118,7 +122,7 @@ func (s *zexServer) Register(ctx context.Context, service *zex.Service) (*zex.Em
 	}
 	grpclog.Printf("get info: host: \"%s\"", info.String())
 
-	// Load FileDescriptorProto with services
+	// Load FileDescriptorProto from services
 	for _, srv := range info.GetListServicesResponse().GetService() {
 		if srv.Name != "grpc.reflection.v1alpha.ServerReflection" {
 			err = informer.Send(&rpb.ServerReflectionRequest{
@@ -217,15 +221,15 @@ func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, er
 		// If pid exists, need check status error or invoke
 		pidStatusKey := pid.ID + "_status"
 		for {
+			// Add sleep for polling
+			time.Sleep(200 * time.Microsecond)
 			is_exists := false
 			iter := s.DB.GetIterator()
 			for iter.Next() {
 				key := string(iter.Key())
 				if key == pidStatusKey {
 					is_exists = true
-					//grpclog.Printf("pid %s with key %s has status '%s'", pid, string(key), iter.Value())
-					//println(iter.Value())
-					//println(len(string(iter.Value())))
+					grpclog.Printf("check pid %s => status '%s'", pid, iter.Value())
 					// If nil pipeline in process, wait errors
 					if len(string(iter.Value())) != 0 {
 						grpclog.Printf("subscribe return answer with error: %s", string(iter.Value()))

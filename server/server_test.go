@@ -103,7 +103,7 @@ func TestRunEngine(t *testing.T) {
 
 	zexMocks := []MockZexServer{
 		{
-			desc: "test Pipeline success simple",
+			desc: "test Pipeline + runPipeline success simple",
 			pid: "pid-1",
 			setPathToServices: map[string][]string{
 				"/A.A/CallC": []string{"localhost:2345"},
@@ -130,7 +130,7 @@ func TestRunEngine(t *testing.T) {
 
 		},
 		{
-			desc: fmt.Sprintf("test Pipeline fail with letency %s", errStrLetency),
+			desc: fmt.Sprintf("test Pipeline + runPipeoine fail with letency %s", errStrLetency),
 			pid: "pid-2",
 			invokeLetency: timeLetency,
 			invokeErr: errors.New(errStrLetency),
@@ -193,7 +193,12 @@ func TestRunEngine(t *testing.T) {
 	}
 
 
-	t.Run("test Registry services", func(tt *testing.T) {
-		// FIXME add tests
+	t.Run("test subscribe services", func(tt *testing.T) {
+		tt.Skip("need add test")
 	})
+
+	t.Run("test registry services", func(tt *testing.T) {
+		tt.Skip("need add test")
+	})
+
 }
