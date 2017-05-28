@@ -14,11 +14,10 @@ import (
 	"os/exec"
 )
 
-
-
 const DBPath = "/tmp/zex.db.test"
 const zexPort = 4981
 const serviceAPort = 4898
+
 
 type AService struct{}
 
