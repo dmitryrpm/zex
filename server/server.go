@@ -73,14 +73,14 @@ type zexServer struct {
 }
 
 
-// Register service interface impl
+// Register services interface impl
 func (s *zexServer) Register(ctx context.Context, service *zex.Service) (*zex.Empty, error) {
-	grpclog.Printf("Start registraion service in Zex (%s, %s)", service.Name, service.Addr)
+	grpclog.Printf("Start registraion services in Zex (%s, %s)", service.Name, service.Addr)
 	// ---------------------
 	// Do reflection request
 	// ---------------------
 	serviceKey := service.Addr + "/" + service.Name
-	grpclog.Printf("start get all methods in registred \"%s\" service", serviceKey)
+	grpclog.Printf("start get all methods in registred \"%s\" services", serviceKey)
 
 	// create connect
 	conn, err := grpc.Dial(service.Addr, grpc.WithInsecure())
@@ -163,12 +163,12 @@ func (s *zexServer) Register(ctx context.Context, service *zex.Service) (*zex.Em
 	s.RegisterServices[serviceKey] = conn
 	s.lockForRegger.Unlock()
 
-	grpclog.Printf("Add service to map with key %s successed", serviceKey)
+	grpclog.Printf("Add services to map with key %s successed", serviceKey)
 	return &zex.Empty{}, nil
 }
 
 
-// Pipeline service interface impl
+// Pipeline services interface impl
 func (s *zexServer) Pipeline(stream zex.Zex_PipelineServer) error {
 	grpclog.Printf("listen stream pipeline")
 
@@ -214,7 +214,7 @@ func (s *zexServer) Pipeline(stream zex.Zex_PipelineServer) error {
 	return nil
 }
 
-// Subscribe service interface impl
+// Subscribe services interface impl
 func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, error) {
 	grpclog.Printf("subscribe uuid %s", pid.ID)
 	if s.isExistsPid(pid.ID) {
@@ -268,7 +268,7 @@ func (s *zexServer) runPipeline(pid string) {
 	// Get context for cancel all goroutine calls
 	var (
 		ctx, cancel = context.WithCancel(context.Background())
-		pipeline    []*zex.Cmd
+		pipeline       []zex.Cmd
 	)
 
 	// create batch transaction
@@ -280,19 +280,30 @@ func (s *zexServer) runPipeline(pid string) {
 	for iter.Next() {
 		key := iter.Key()
 		str_key := string(key)
+
 		if strings.Contains(str_key, pid)  {
-			// delete all if we do correct all request
+			value := iter.Value()
+
 			if str_key != pid + "_status" {
 				// collect all pipelines
-				pipeline = append(pipeline, &zex.Cmd{
+				grpclog.Printf("body: %s", string(value))
+
+				body := make([]byte, len(value))
+				copy(body, value)
+
+				cmd := zex.Cmd{
 					zex.CmdType(1), strings.Split(str_key, "_")[1],
-					iter.Value()})
+					body}
+
+				pipeline = append(pipeline, cmd)
+				grpclog.Printf("%s", pipeline)
 			}
-			// update transaction
+
 			transation_del.Delete(key)
 		}
 	}
 	iter.Release()
+
 
 	// get count pipelines, for check all goroutines
 	lengthPipiline := len(pipeline)
@@ -351,8 +362,8 @@ func (s *zexServer) runPipeline(pid string) {
 
 }
 
-// Call command service
-func (s *zexServer) callCmd(ctx context.Context, cmd *zex.Cmd, errC chan error) {
+// Call command services
+func (s *zexServer) callCmd(ctx context.Context, cmd zex.Cmd, errC chan error) {
 	var (
 		out        = &any.Any{}
 		cc         *grpc.ClientConn
@@ -367,13 +378,11 @@ func (s *zexServer) callCmd(ctx context.Context, cmd *zex.Cmd, errC chan error) 
 	if !err {
 		errC <- errors.New("incorrect get serviceKey")
 	}
-
 	// if not found
 	if len(serviceKey) == 0 {
 		errC <- errors.New(`not found path in PathToServices serviceKey`)
 		return
 	}
-
 	s.lockForRegger.RLock()
 	cc, ok = s.RegisterServices[serviceKey[0]]
 	s.lockForRegger.RUnlock()
@@ -386,7 +395,7 @@ func (s *zexServer) callCmd(ctx context.Context, cmd *zex.Cmd, errC chan error) 
 
 	in := byteProto(cmd.Body)
 	// The grpc.Invoke or Mock in test returns an error, or nil to chan
-	ierror := s.Invoke(ctx, cmd.Path, &in, out, cc)
+	ierror := s.Invoke(ctx, cmd.Path, in, out, cc)
 	if ierror != nil {
 		grpclog.Printf("incorrect invoke %s", ierror)
 	}
