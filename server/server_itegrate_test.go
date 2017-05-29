@@ -10,32 +10,13 @@ import (
 	storage_leveldb "github.com/dmitryrpm/zex/storage/leveldb"
 	"net"
 	"google.golang.org/grpc/reflection"
-	"github.com/dmitryrpm/zex/cmd/services/proto"
+	"github.com/dmitryrpm/zex/examples/a"
 	"os/exec"
 )
 
 const DBPath = "/tmp/zex.db.test"
 const zexPort = 4981
 const serviceAPort = 4898
-
-
-type AService struct{}
-
-func (s *AService) CallA(ctx context.Context, empty *A.Req) (*A.Empty, error) {
-	defer grpclog.Printf("Call services A.%s with req", empty)
-	//time.Sleep(100 * time.Second)
-	return &A.Empty{}, nil
-}
-
-func (s *AService) CallB(ctx context.Context, empty *A.Req) (*A.Empty, error) {
-	grpclog.Printf("Call services A.%s with req", empty)
-	return &A.Empty{}, nil
-}
-
-func (s *AService) CallC(ctx context.Context, empty *A.Req) (*A.Empty, error) {
-	grpclog.Printf("Call services A.%s with req", empty)
-	return &A.Empty{}, nil
-}
 
 func TestItegrate(tt *testing.T) {
 
@@ -72,8 +53,8 @@ func TestItegrate(tt *testing.T) {
 		tt.Fail()
 	}
 
-	sa := new(AService)
-	A.RegisterAServer(s, sa)
+	sa := new(a.AService)
+	a.RegisterAServer(s, sa)
 	reflection.Register(s)
 	go s.Serve(listener)
 
