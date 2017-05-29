@@ -1,23 +1,16 @@
 syntax = "proto3";
 
-package A;
+package b;
 
 // Interface exported by the server.
-service A {
+service B {
     rpc CallA(Req) returns (Empty) {}
     rpc CallB(Req) returns (Empty) {}
     rpc CallC(Req) returns (Empty) {}
 }
 
+message Req {
+    string Name = 1;
+}
 // Empty msg
 message Empty {}
-
-// Request
-message Req {
-    string  Name = 1;
-}
-
-
-
-
-

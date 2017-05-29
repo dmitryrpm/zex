@@ -2,7 +2,16 @@ run_zex:
 	go run cmd/zex/main.go
 
 run_a:
-	go run cmd/service/main.go
+	go run cmd/a/main.go
+
+run_b:
+	go run cmd/b/main.go
+
+run_c:
+	go run cmd/c/main.go
+
+run_client:
+	go run cmd/client/main.go
 
 test:
 	go test ./server -v

@@ -6,7 +6,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
-	a "github.com/dmitryrpm/zex/cmd/service/proto"
+	"github.com/dmitryrpm/zex/examples/a"
 	"github.com/golang/protobuf/proto"
 	"github.com/dmitryrpm/zex/proto"
 )
@@ -34,37 +34,33 @@ func main() {
 	}
 
 	// тут мы шлем реальное тело
-	var (
-		req1 = &a.Req{Name: "AloxaA"}
-		req2 = &a.Req{Name: "AloxaB"}
-		req3 = &a.Req{Name: "AloxaC"}
-		//req4 = &a.Req{Name: "AloxaD"}
-	)
 
-	body1, _ := proto.Marshal(req1)
-	body2, _ := proto.Marshal(req2)
-	body3, _ := proto.Marshal(req3)
-	//body4, _ := proto.Marshal(req4)
+	body1, _ := proto.Marshal(&a.Req{Name: "AloxaA"})
+	body2, _ := proto.Marshal(&a.Req{Name: "AloxaB"})
+	body3, _ := proto.Marshal(&a.Req{Name: "AloxaC"})
 
-	cmd1 := &zex.Cmd{zex.CmdType_INVOKE, "/A.A/CallA", body1}
+	cmd1 := &zex.Cmd{zex.CmdType_INVOKE, "/a.A/CallA", body1}
 	if err := stream.Send(cmd1); err != nil {
-		grpclog.Fatalf("%v.Send(%v) = %v", stream, "/A.A/CallA", err)
+		grpclog.Fatalf("%v.Send(%v) = %v", stream, cmd1.Path, err)
 	}
 
-	cmd2 := &zex.Cmd{zex.CmdType_INVOKE, "/A.A/CallB", body2}
+	cmd2 := &zex.Cmd{zex.CmdType_INVOKE, "/a.A/CallB", body2}
 	if err := stream.Send(cmd2); err != nil {
-		grpclog.Fatalf("%v.Send(%v) = %v", stream, "/A.A/CallB", err)
+		grpclog.Fatalf("%v.Send(%v) = %v", stream, cmd2.Path, err)
 	}
 
-	cmd3 := &zex.Cmd{zex.CmdType_INVOKE, "/A.A/CallC", body3}
+	cmd3 := &zex.Cmd{zex.CmdType_INVOKE, "/a.A/CallC", body3}
 	if err := stream.Send(cmd3); err != nil {
-		grpclog.Fatalf("%v.Send(%v) = %v", stream, "/A.A/CallC", err)
+		grpclog.Fatalf("%v.Send(%v) = %v", stream, cmd3.Path, err)
 	}
 
-	//cmd4 := &zex.Cmd{zex.CmdType_INVOKE, "/A.A/CallD", body4}
-	//if err := stream.Send(cmd4); err != nil {
-	//	grpclog.Fatalf("%v.Send(%v) = %v", stream, "/A.A/CallD", err)
-	//}
+	stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/b.B/CallA", body1})
+	stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/b.B/CallB", body2})
+	stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/b.B/CallC", body3})
+
+	stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/c.C/CallA", body1})
+	stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/c.C/CallB", body2})
+	stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/c.C/CallC", body3})
 
 
 	pid, err := stream.CloseAndRecv()

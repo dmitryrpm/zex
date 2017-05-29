@@ -58,7 +58,7 @@ func (x CmdType) String() string {
 }
 func (CmdType) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
-// Interface serivice, this is add service to zex
+// Interface serivice, this is add services to zex
 type Service struct {
 	Name string `protobuf:"bytes,1,opt,name=Name" json:"Name,omitempty"`
 	Addr string `protobuf:"bytes,2,opt,name=Addr" json:"Addr,omitempty"`
@@ -176,7 +176,7 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for Zex service
+// Client API for Zex services
 
 type ZexClient interface {
 	Register(ctx context.Context, in *Service, opts ...grpc.CallOption) (*Empty, error)
@@ -244,7 +244,7 @@ func (c *zexClient) Subscribe(ctx context.Context, in *Pid, opts ...grpc.CallOpt
 	return out, nil
 }
 
-// Server API for Zex service
+// Server API for Zex services
 
 type ZexServer interface {
 	Register(context.Context, *Service) (*Empty, error)
