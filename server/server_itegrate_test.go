@@ -10,7 +10,7 @@ import (
 	storage_leveldb "github.com/dmitryrpm/zex/storage/leveldb"
 	"net"
 	"google.golang.org/grpc/reflection"
-	"github.com/dmitryrpm/zex/cmd/service/proto"
+	"github.com/dmitryrpm/zex/cmd/services/proto"
 	"os/exec"
 )
 
@@ -22,18 +22,18 @@ const serviceAPort = 4898
 type AService struct{}
 
 func (s *AService) CallA(ctx context.Context, empty *A.Req) (*A.Empty, error) {
-	defer grpclog.Printf("Call service A.%s with req", empty)
+	defer grpclog.Printf("Call services A.%s with req", empty)
 	//time.Sleep(100 * time.Second)
 	return &A.Empty{}, nil
 }
 
 func (s *AService) CallB(ctx context.Context, empty *A.Req) (*A.Empty, error) {
-	grpclog.Printf("Call service A.%s with req", empty)
+	grpclog.Printf("Call services A.%s with req", empty)
 	return &A.Empty{}, nil
 }
 
 func (s *AService) CallC(ctx context.Context, empty *A.Req) (*A.Empty, error) {
-	grpclog.Printf("Call service A.%s with req", empty)
+	grpclog.Printf("Call services A.%s with req", empty)
 	return &A.Empty{}, nil
 }
 
@@ -56,16 +56,16 @@ func TestItegrate(tt *testing.T) {
 
 	beforeLenServices := len(zs.RegisterServices)
 	if beforeLenServices != 0 {
-		tt.Errorf("we registered %d service, but it has been empty", beforeLenServices)
+		tt.Errorf("we registered %d services, but it has been empty", beforeLenServices)
 	}
 
 	beforeLenPath := len(zs.PathToServices)
 	grpclog.Println(zs.PathToServices)
 	if beforeLenPath != 0 {
-		tt.Errorf("we registered %d service path, but we have %d rows", 0, beforeLenPath)
+		tt.Errorf("we registered %d services path, but we have %d rows", 0, beforeLenPath)
 	}
 
-	// Register service A
+	// Register services A
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", serviceAPort))
 	if err != nil {
 		grpclog.Fatalf(err.Error())
@@ -94,11 +94,11 @@ func TestItegrate(tt *testing.T) {
 
 	afterLenServices := len(zs.RegisterServices)
 	if afterLenServices != 1 {
-		tt.Errorf("we registered %d service, but we have %d rows", 1, afterLenServices)
+		tt.Errorf("we registered %d services, but we have %d rows", 1, afterLenServices)
 	}
 
 	afterLenPath := len(zs.PathToServices)
 	if afterLenPath != 3 {
-		tt.Errorf("we registered %d service path, but we have %d rows", 6, afterLenPath)
+		tt.Errorf("we registered %d services path, but we have %d rows", 6, afterLenPath)
 	}
 }
