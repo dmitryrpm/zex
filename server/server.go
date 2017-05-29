@@ -192,7 +192,7 @@ func (s *zexServer) Pipeline(stream zex.Zex_PipelineServer) error {
 			err = transation.Commit()
 
 			if err != nil {
-				grpclog.Printf("can't set value to storage_leveldb %s: %v", pipeline, err)
+				grpclog.Printf("can't set value to leveldb %s: %v", pipeline, err)
 				return nil
 			}
 
@@ -263,7 +263,7 @@ func (s *zexServer) isExistsPid(pid string) bool {
 
 // Run pipeline
 func (s *zexServer) runPipeline(pid string) {
-	grpclog.Printf("Start RunPipeline uuid %s, storage_leveldb count %d", pid, s.DB.GetRowsCount())
+	grpclog.Printf("Start RunPipeline uuid %s, leveldb count %d", pid, s.DB.GetRowsCount())
 
 	// Get context for cancel all goroutine calls
 	var (
@@ -275,7 +275,7 @@ func (s *zexServer) runPipeline(pid string) {
 	transation_del := s.DB.NewTransaction()
 	transation_error := s.DB.NewTransaction()
 
-	// iterate to storage_leveldb
+	// iterate to leveldb
 	iter := s.DB.GetIterator()
 	for iter.Next() {
 		key := iter.Key()
@@ -347,7 +347,7 @@ func (s *zexServer) runPipeline(pid string) {
 		}
 	}
 
-	grpclog.Printf("runPipeline %s was done, storage_leveldb cleanup, all rows %d", pid, s.DB.GetRowsCount())
+	grpclog.Printf("runPipeline %s was done, leveldb cleanup, all rows %d", pid, s.DB.GetRowsCount())
 
 }
 

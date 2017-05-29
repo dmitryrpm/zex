@@ -14,7 +14,7 @@ import (
 	"errors"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/dmitryrpm/zex/storage_mock"
+	"github.com/dmitryrpm/zex/storage/mock"
 )
 
 
@@ -164,7 +164,7 @@ func TestUnits(t *testing.T) {
 
 
 			// example for show how work with options
-			storageMock, _ := storage_mock.NewMock("test")
+			storageMock, _ := mock.NewMock("test")
 			impl := NewMock(m.Invoke, storageMock)
 			impl.PathToServices = tc.setPathToServices
 			impl.RegisterServices = tc.setRegisterServices
@@ -179,7 +179,7 @@ func TestUnits(t *testing.T) {
 			impl.runPipeline(tc.pid)
 			count := impl.DB.GetRowsCount()
 			if  count != tc.countRows {
-				tt.Errorf("storage_mock rows shoude be %s," +
+				tt.Errorf("mock rows shoude be %s," +
 					" but we have rows \"%v\"", tc.countRows, count)
 			}
 

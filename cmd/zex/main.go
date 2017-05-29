@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/grpclog"
 	"github.com/dmitryrpm/zex/proto"
 	"github.com/dmitryrpm/zex/server"
-	"github.com/dmitryrpm/zex/storage_leveldb"
+	storage_leveldb "github.com/dmitryrpm/zex/storage/leveldb"
 )
 
 var (

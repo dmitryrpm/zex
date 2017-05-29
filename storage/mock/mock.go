@@ -1,4 +1,4 @@
-package storage_mock
+package mock
 
 import (
 	"github.com/dmitryrpm/zex/proto"

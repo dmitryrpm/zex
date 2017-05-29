@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc"
 	"testing"
 	"google.golang.org/grpc/grpclog"
-	"github.com/dmitryrpm/zex/storage_leveldb"
+	storage_leveldb "github.com/dmitryrpm/zex/storage/leveldb"
 	"net"
 	"google.golang.org/grpc/reflection"
 	"github.com/dmitryrpm/zex/cmd/service/proto"

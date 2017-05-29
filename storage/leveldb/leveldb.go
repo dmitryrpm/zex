@@ -1,7 +1,7 @@
-package storage_leveldb
+package leveldb
 
 import (
-	"github.com/syndtr/goleveldb/leveldb"
+	ld "github.com/syndtr/goleveldb/leveldb"
 	"github.com/dmitryrpm/zex/storage"
 )
 
@@ -9,7 +9,7 @@ import (
 // LevelDB constructor
 // ---------------------------
 func New(path string) (db *LevelDB, err error) {
-	levelDB, err := leveldb.OpenFile(path, nil)
+	levelDB, err := ld.OpenFile(path, nil)
 	if err != nil{
 		return
 	}
@@ -20,7 +20,7 @@ func New(path string) (db *LevelDB, err error) {
 // LevelDB structure
 //---------------------------
 type LevelDB struct {
-	DB	*leveldb.DB
+	DB	*ld.DB
 }
 
 func (st *LevelDB) GetIterator() storage.Iterator {
@@ -38,7 +38,7 @@ func (st *LevelDB) GetRowsCount() int {
 func (st *LevelDB) NewTransaction() storage.Transaction {
 	return &levelDBTransaction{
 		storage: st,
-		batch: new(leveldb.Batch),
+		batch: new(ld.Batch),
 	}
 }
 
@@ -47,7 +47,7 @@ func (st *LevelDB) NewTransaction() storage.Transaction {
 //-------------------------------
 type levelDBTransaction struct {
 	storage     *LevelDB
-	batch       *leveldb.Batch
+	batch       *ld.Batch
 }
 
 func (t *levelDBTransaction) Put(k []byte, v []byte) {
