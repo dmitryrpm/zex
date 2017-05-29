@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc"
 	"testing"
 	"google.golang.org/grpc/grpclog"
-	storage_leveldb "github.com/dmitryrpm/zex/storage/leveldb"
+	"github.com/dmitryrpm/zex/storage/leveldb"
 	"net"
 	"google.golang.org/grpc/reflection"
 	"github.com/dmitryrpm/zex/examples/a"
@@ -20,7 +20,7 @@ const serviceAPort = 4898
 
 func TestItegrate(tt *testing.T) {
 
-	stLevelDB, err := storage_leveldb.New(DBPath)
+	stLevelDB, err := leveldb.New(DBPath)
 	cmd := exec.Command("rm", "-rf", DBPath)
 	defer cmd.Run()
 

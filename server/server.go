@@ -223,12 +223,12 @@ func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, er
 		for {
 			// Add sleep for polling
 			time.Sleep(200 * time.Microsecond)
-			is_exists := false
+			isExists := false
 			iter := s.DB.GetIterator()
 			for iter.Next() {
 				key := string(iter.Key())
 				if key == pidStatusKey {
-					is_exists = true
+					isExists = true
 					grpclog.Printf("check pid %s => status '%s'", pid, iter.Value())
 					// If nil pipeline in process, wait errors
 					if len(string(iter.Value())) != 0 {
@@ -238,7 +238,7 @@ func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, er
 				}
 			}
 			// If does not exists, done pipeline correct
-			if !is_exists {
+			if !isExists {
 				grpclog.Println("subscribe return answer with status nil, all pipeline done correct")
 				return &zex.Empty{}, nil
 			}
@@ -272,19 +272,19 @@ func (s *zexServer) runPipeline(pid string) {
 	)
 
 	// create batch transaction
-	transation_del := s.DB.NewTransaction()
-	transation_error := s.DB.NewTransaction()
+	transationDel := s.DB.NewTransaction()
+	transationErr := s.DB.NewTransaction()
 
 	// iterate to leveldb
 	iter := s.DB.GetIterator()
 	for iter.Next() {
 		key := iter.Key()
-		str_key := string(key)
+		strKey := string(key)
 
-		if strings.Contains(str_key, pid)  {
+		if strings.Contains(strKey, pid)  {
 			value := iter.Value()
 
-			if str_key != pid + "_status" {
+			if strKey != pid + "_status" {
 				// collect all pipelines
 				grpclog.Printf("body: %s", string(value))
 
@@ -292,14 +292,14 @@ func (s *zexServer) runPipeline(pid string) {
 				copy(body, value)
 
 				cmd := zex.Cmd{
-					zex.CmdType(1), strings.Split(str_key, "_")[1],
+					zex.CmdType(1), strings.Split(strKey, "_")[1],
 					body}
 
 				pipeline = append(pipeline, cmd)
 				grpclog.Printf("%s", pipeline)
 			}
 
-			transation_del.Delete(key)
+			transationDel.Delete(key)
 		}
 	}
 	iter.Release()
@@ -336,11 +336,11 @@ func (s *zexServer) runPipeline(pid string) {
 			for iter.Next() {
 				key := iter.Key()
 				if string(key) == pid + "_status" {
-					transation_error.Put(key, []byte(err.Error()))
+					transationErr.Put(key, []byte(err.Error()))
 				}
 			}
 			iter.Release()
-			transation_error.Commit()
+			transationErr.Commit()
 			// If one of this fail, all failed
 			cancel()
 			return
@@ -350,7 +350,7 @@ func (s *zexServer) runPipeline(pid string) {
 		if lengthPipiline == 0 {
 			grpclog.Printf("all command done")
 			close(errC)
-			err := transation_del.Commit()
+			err := transationDel.Commit()
 			if err != nil {
 				grpclog.Printf("level db pid %s has incorrect status %s", pid, err)
 				return

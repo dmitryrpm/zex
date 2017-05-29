@@ -72,10 +72,10 @@ func main() {
 	}
 	grpclog.Printf("Pipeline close: %v", pid)
 
-	_, str_err := client.Subscribe(context.Background(), pid)
-	if str_err != nil {
-		grpclog.Printf("Pipeline done with error: %s", str_err)
+	_, strErr := client.Subscribe(context.Background(), pid)
+	if strErr != nil {
+		grpclog.Printf("Pipeline done with error: %s", strErr)
 	} else {
-		grpclog.Printf("Pipeline done correct %s", str_err)
+		grpclog.Printf("Pipeline done correct %s", strErr)
 	}
 }
