@@ -49,4 +49,6 @@ make run_client
 make run test
 ```
 
+![Alt text](examples/img/zex_screen.png?raw=true "Optional Title")
+
 
