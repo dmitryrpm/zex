@@ -25,7 +25,7 @@ type LevelDBMock struct {
 	mockIterator    storage.Iterator
 }
 
-func (st *LevelDBMock) GetIterator() storage.Iterator {
+func (st *LevelDBMock) GetIterator(start string, stop string) storage.Iterator {
 	return NewMockIterator(&st.pipeline)
 }
 

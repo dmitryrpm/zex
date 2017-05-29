@@ -2,6 +2,7 @@ package leveldb
 
 import (
 	ld "github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/util"
 	"github.com/dmitryrpm/zex/storage"
 )
 
@@ -23,8 +24,12 @@ type LevelDB struct {
 	DB	*ld.DB
 }
 
-func (st *LevelDB) GetIterator() storage.Iterator {
+func (st *LevelDB) GetIterator(start string, stop string) storage.Iterator {
+	if len(start) > 0 {
+		return st.DB.NewIterator(util.BytesPrefix([]byte(start)), nil)
+	}
 	return st.DB.NewIterator(nil, nil)
+
 }
 
 func (st *LevelDB) GetRowsCount() int {
