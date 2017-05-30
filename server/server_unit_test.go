@@ -15,6 +15,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/dmitryrpm/zex/storage/mock"
+	//"io"
 )
 
 
@@ -107,7 +108,7 @@ type MockZexServer struct {
 
 
 // Pipeline tests
-func TestPipelineUnits(t *testing.T) {
+func TestRunPipelineUnits(t *testing.T) {
 
 	errStrLetency := fmt.Sprintf("waiting %s", timeLetency)
 
@@ -203,10 +204,73 @@ func TestPipelineUnits(t *testing.T) {
 	}
 }
 
+//Test pipeline
+//type PipelineTestCase struct {
+//	pipeline            []*zex.Cmd
+//	pid           string
+//	desc          string
+//	status        []byte
+//	error          error
+//}
+//
+//type PipelineStreamMock struct {
+//	r int
+//	pipeline            []*zex.Cmd
+//	grpc.ServerStream
+//}
+//
+//func (p *PipelineStreamMock) SendAndClose(pid *zex.Pid) error {
+//	return nil
+//}
+//
+//func (p *PipelineStreamMock) Recv() (*zex.Cmd, error) {
+//	p.r++
+//	err := io.EOF
+//	if p.r == len(p.pipeline){
+//		err = nil
+//	}
+//	return p.pipeline[p.r], err
+//}
+//
+//
+//func TestPipelineUnits(t *testing.T) {
+//
+//	RegMocks := []PipelineTestCase{
+//		{
+//			desc:          "test correct pipeline service",
+//			pid:           "pipe-1",
+//			pipeline: 	[]*zex.Cmd{
+//				{
+//					Path: "/A.A/CallC",
+//					Body: []byte("aaaa"),
+//				},
+//				{
+//					Path: "/A.A/CallB",
+//					Body: []byte("aaaa"),
+//				},
+//			},
+//		},
+//	}
+//	for _, tc := range RegMocks {
+//		t.Run(tc.desc, func(tt *testing.T) {
+//			m := &mockInvoker{}
+//			storageMock, _ := mock.NewMock("test")
+//			impl := NewMock(m.Invoke, storageMock, m.Dial)
+//			stream := &PipelineStreamMock{}
+//			stream.pipeline = tc.pipeline
+//			err := impl.Pipeline(stream)
+//
+//
+//		})
+//	}
+//
+//}
+
 
 type SubscribeTestCase struct {
 	pipeline            []*zex.Cmd
 	cancelTimeout time.Duration
+	defaultTimeout time.Duration
 	pid           string
 	desc          string
 	status        []byte
@@ -223,7 +287,8 @@ func TestSubscribeUnits(t *testing.T) {
 			pipeline: []*zex.Cmd{},
 			status: make([]byte, 0),
 			error: nil,
-			cancelTimeout: 500*time.Millisecond,
+			cancelTimeout: time.Second,
+			defaultTimeout: time.Second,
 		},
 		{
 			desc: "test correct subscribe with timeout",
@@ -236,10 +301,11 @@ func TestSubscribeUnits(t *testing.T) {
 			},
 			status: make([]byte, 0),
 			error: errors.New("timeout"),
-			cancelTimeout: 5000*time.Millisecond,
+			cancelTimeout: 50*time.Millisecond,
+			defaultTimeout: 10*time.Millisecond,
 		},
 		{
-			desc: "test correct subscribe with waiting",
+			desc: "test correct subscribe with cancel context",
 			pid:  "pid-4",
 			pipeline: []*zex.Cmd{
 				{
@@ -249,7 +315,8 @@ func TestSubscribeUnits(t *testing.T) {
 			},
 			status: make([]byte, 0),
 			error: errors.New("context cancel"),
-			cancelTimeout: 500*time.Millisecond,
+			cancelTimeout: 10*time.Millisecond,
+			defaultTimeout: 50*time.Millisecond,
 		},{
 			desc: "test with errors subscribe",
 			pid:  "pid-5",
@@ -265,7 +332,8 @@ func TestSubscribeUnits(t *testing.T) {
 			},
 			status: []byte("incorrect request"),
 			error: errors.New("incorrect request"),
-			cancelTimeout: 500*time.Millisecond,
+			cancelTimeout: time.Second,
+			defaultTimeout: time.Second,
 		},
 	}
 
@@ -283,9 +351,10 @@ func TestSubscribeUnits(t *testing.T) {
 			}
 			tr.Commit()
 			impl := NewMock(m.Invoke, storageMock, m.Dial)
+			impl.defaultLoopTimeout = 20 * time.Microsecond
+			impl.defaultTimeout = tc.defaultTimeout
 
-			ctx, cancel := context.WithTimeout(context.Background(), tc.cancelTimeout)
-			defer cancel()
+			ctx, _ := context.WithTimeout(context.Background(), tc.cancelTimeout)
 
 			_, errS := impl.Subscribe(ctx, &zex.Pid{ID: tc.pid})
 			if errS == nil && errS != tc.error ||

@@ -27,6 +27,9 @@ type Invoker func(ctx context.Context, method string, args, reply interface{}, c
 type Dialer func (target string, opts ...grpc.DialOption) (*grpc.ClientConn, error)
 
 
+//const defaultTimeout = 3 * time.Second,
+//const defaultLoopTimeout = 200 * time.Microsecond
+
 
 // New MOCK constructor for Tests
 func NewMock(invoker Invoker, DB storage.Database, dialer Dialer) *zexServer {
@@ -40,6 +43,8 @@ func NewMock(invoker Invoker, DB storage.Database, dialer Dialer) *zexServer {
 		Invoke:           invoker,
 		DB:               DB,
 		Dial:             dialer,
+		defaultTimeout:        3 * time.Second,
+		defaultLoopTimeout:    200 * time.Microsecond,
 	}
 }
 
@@ -60,6 +65,8 @@ func New(DB storage.Database) *zexServer {
 		// DB link
 		DB:               DB,
 		Dial:             grpc.Dial,
+		defaultTimeout:        3 * time.Second,
+		defaultLoopTimeout:    200 * time.Microsecond,
 	}
 }
 
@@ -75,6 +82,9 @@ type zexServer struct {
 	Invoke           Invoker
 	Dial             Dialer
 	DB               storage.Database
+
+	defaultTimeout     time.Duration
+	defaultLoopTimeout time.Duration
 
 }
 
@@ -226,29 +236,24 @@ func (s *zexServer) Pipeline(stream zex.Zex_PipelineServer) error {
 	return nil
 }
 
-const defaultTimeout = 3 * time.Second
-const defaultLoopTimeout = 200 * time.Microsecond
-
 // Subscribe services interface impl
 func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, error) {
 	grpclog.Printf("subscribe uuid %s", pid.ID)
 
 	// add timeout
 	// FIXME add timeout parameter to function Subscribe(ctx context.Context, pid *zex.Pid, timeout time)
-	ctxTimeout, _ := context.WithTimeout(context.Background(), defaultTimeout)
+	ctxTimeout, _ := context.WithTimeout(context.Background(), s.defaultTimeout)
 
 	if s.isExistsPid(pid.ID) {
 		// If pid exists, need check status error or invoke
 		pidStatusKey := pid.ID + "_status"
 		for {
 			// Add sleep for polling
-			time.Sleep(defaultLoopTimeout)
 			isExists := false
 			iter := s.DB.GetIterator(pid.ID, "")
 			for iter.Next() {
 				if  string(iter.Key()) == pidStatusKey {
 					isExists = true
-					grpclog.Printf("check pid %s => status '%s'", pid, iter.Value())
 					// If nil pipeline in process, wait errors
 					if len(string(iter.Value())) != 0 {
 						grpclog.Printf("subscribe return answer with error: %s", string(iter.Value()))
@@ -268,11 +273,11 @@ func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, er
 				grpclog.Printf("contect canceled, return error")
 				return &zex.Empty{}, errors.New("context cancel")
 			case <-ctxTimeout.Done():
-				grpclog.Printf("timeout, more when %s return error", defaultTimeout)
+				grpclog.Printf("timeout, more when %s return error", s.defaultTimeout)
 				return &zex.Empty{}, errors.New("timeout")
 			default:
 				// Add sleep for polling
-				time.Sleep(defaultLoopTimeout)
+				time.Sleep(s.defaultLoopTimeout)
 			}
 		}
 	}
