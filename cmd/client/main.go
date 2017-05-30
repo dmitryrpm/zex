@@ -64,7 +64,6 @@ func main() {
 
 	//stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/d.D/CallA", body3})
 
-
 	pid, err := stream.CloseAndRecv()
 	if err == io.EOF {
 		grpclog.Printf("close stream")

@@ -18,7 +18,6 @@ import (
 	//"io"
 )
 
-
 type mockInvoker struct {
 	lock *sync.Mutex
 	data []string
@@ -51,7 +50,6 @@ func (m *mockInvoker) Invoke(ctx context.Context, method string, args, reply int
 		grpclog.Printf("wait %s", m.letency)
 	}
 
-
 	// other routes cancellation
 	if err != nil {
 		select {
@@ -69,7 +67,7 @@ func (m *mockInvoker) Invoke(ctx context.Context, method string, args, reply int
 	return err
 }
 
-func (m *mockInvoker) Dial (target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+func (m *mockInvoker) Dial(target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	var (
 		err error
 	)
@@ -80,7 +78,6 @@ func (m *mockInvoker) Dial (target string, opts ...grpc.DialOption) (*grpc.Clien
 type MockDbLevel struct {
 	batch *leveldb.Batch
 }
-
 
 func (db *MockDbLevel) Write(batch *leveldb.Batch, wo *opt.WriteOptions) error {
 	if batch == nil || batch.Len() == 0 {
@@ -101,11 +98,9 @@ type MockZexServer struct {
 	setRegisterServices map[string]*grpc.ClientConn
 	pipeline            []*zex.Cmd
 
-	countRows int
+	countRows    int
 	expCallerCmd []string
-
 }
-
 
 // Pipeline tests
 func TestRunPipelineUnits(t *testing.T) {
@@ -204,28 +199,26 @@ func TestRunPipelineUnits(t *testing.T) {
 	}
 }
 
-
 type SubscribeTestCase struct {
-	pipeline            []*zex.Cmd
-	cancelTimeout time.Duration
+	pipeline       []*zex.Cmd
+	cancelTimeout  time.Duration
 	defaultTimeout time.Duration
-	pid           string
-	desc          string
-	status        []byte
+	pid            string
+	desc           string
+	status         []byte
 	error          error
 }
-
 
 // Subscribe tests
 func TestSubscribeUnits(t *testing.T) {
 	subMocks := []SubscribeTestCase{
 		{
-			desc: "test correct subscribe empty",
-			pid:  "pid-3",
-			pipeline: []*zex.Cmd{},
-			status: make([]byte, 0),
-			error: nil,
-			cancelTimeout: time.Second,
+			desc:           "test correct subscribe empty",
+			pid:            "pid-3",
+			pipeline:       []*zex.Cmd{},
+			status:         make([]byte, 0),
+			error:          nil,
+			cancelTimeout:  time.Second,
 			defaultTimeout: time.Second,
 		},
 		{
@@ -237,10 +230,10 @@ func TestSubscribeUnits(t *testing.T) {
 					Body: []byte("aaaa"),
 				},
 			},
-			status: make([]byte, 0),
-			error: errors.New("timeout"),
-			cancelTimeout: 50*time.Millisecond,
-			defaultTimeout: 10*time.Millisecond,
+			status:         make([]byte, 0),
+			error:          errors.New("timeout"),
+			cancelTimeout:  50 * time.Millisecond,
+			defaultTimeout: 10 * time.Millisecond,
 		},
 		{
 			desc: "test correct subscribe with cancel context",
@@ -251,11 +244,11 @@ func TestSubscribeUnits(t *testing.T) {
 					Body: []byte("aaaa"),
 				},
 			},
-			status: make([]byte, 0),
-			error: errors.New("context cancel"),
-			cancelTimeout: 10*time.Millisecond,
-			defaultTimeout: 50*time.Millisecond,
-		},{
+			status:         make([]byte, 0),
+			error:          errors.New("context cancel"),
+			cancelTimeout:  10 * time.Millisecond,
+			defaultTimeout: 50 * time.Millisecond,
+		}, {
 			desc: "test with errors subscribe",
 			pid:  "pid-5",
 			pipeline: []*zex.Cmd{
@@ -268,9 +261,9 @@ func TestSubscribeUnits(t *testing.T) {
 					Body: []byte("bbbb"),
 				},
 			},
-			status: []byte("incorrect request"),
-			error: errors.New("incorrect request"),
-			cancelTimeout: time.Second,
+			status:         []byte("incorrect request"),
+			error:          errors.New("incorrect request"),
+			cancelTimeout:  time.Second,
 			defaultTimeout: time.Second,
 		},
 	}
@@ -285,7 +278,7 @@ func TestSubscribeUnits(t *testing.T) {
 				tr.Put([]byte(str), []byte(cmd.Body))
 			}
 			if len(tc.pipeline) > 0 {
-				tr.Put([]byte(tc.pid + "_status"), tc.status)
+				tr.Put([]byte(tc.pid+"_status"), tc.status)
 			}
 			tr.Commit()
 			impl := NewMock(m.Invoke, storageMock, m.Dial)
@@ -303,25 +296,22 @@ func TestSubscribeUnits(t *testing.T) {
 		})
 	}
 
-
 }
-
 
 type RegisterTestCase struct {
-	service       zex.Service
-	pid           string
-	desc          string
-	error          error
+	service zex.Service
+	pid     string
+	desc    string
+	error   error
 }
-
 
 func TestRegisterUnits(t *testing.T) {
 	RegMocks := []RegisterTestCase{
 		{
-			desc:          "test incorrect service format",
-			pid:           "reg-1",
-			service:       zex.Service{"xxx", "xxx.com"},
-			error: 		errors.New("incorrect format host:port"),
+			desc:    "test incorrect service format",
+			pid:     "reg-1",
+			service: zex.Service{"xxx", "xxx.com"},
+			error:   errors.New("incorrect format host:port"),
 		},
 		//{
 		//	desc:          "test correct service",
@@ -344,7 +334,6 @@ func TestRegisterUnits(t *testing.T) {
 	}
 
 }
-
 
 //Test pipeline
 //type PipelineTestCase struct {

@@ -66,7 +66,7 @@ func TestItegrate(tt *testing.T) {
 	zexClient := zex.NewZexClient(zexConn)
 
 	_, errc := zexClient.Register(context.Background(),
-		&zex.Service{Name: "A", Addr:  fmt.Sprintf(":%d", serviceAPort)})
+		&zex.Service{Name: "A", Addr: fmt.Sprintf(":%d", serviceAPort)})
 	if errc != nil {
 		grpclog.Fatalf("%v.Registry(_) = _, %v: ", zexClient, errc)
 	}
