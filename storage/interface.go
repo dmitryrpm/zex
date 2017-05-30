@@ -1,6 +1,5 @@
 package storage
 
-
 // Abstract Interface for Databases (Facade-pattern)
 type Database interface {
 	// Get iterator [0..n] rows
@@ -19,16 +18,9 @@ type Iterator interface {
 	Next() bool
 }
 
-
 // Transaction interface
 type Transaction interface {
 	Put(k []byte, v []byte)
 	Delete(k []byte)
 	Commit() error
 }
-
-
-
-
-
-

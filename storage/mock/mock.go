@@ -5,7 +5,6 @@ import (
 	"github.com/dmitryrpm/zex/storage"
 )
 
-
 // ---------------------------
 // LevelDB Mock constructor
 // ---------------------------
@@ -21,8 +20,8 @@ func NewMock(_ string) (db *LevelDBMock, err error) {
 //---------------------------
 
 type LevelDBMock struct {
-	pipeline        []zex.Cmd
-	mockIterator    storage.Iterator
+	pipeline     []zex.Cmd
+	mockIterator storage.Iterator
 }
 
 func (st *LevelDBMock) GetIterator(start string, stop string) storage.Iterator {
@@ -38,7 +37,7 @@ func (st *LevelDBMock) NewTransaction() storage.Transaction {
 	copy(pipeline, st.pipeline)
 	return &levelDBTransactionMock{
 		pipeline: pipeline,
-		storage: st,
+		storage:  st,
 	}
 }
 
@@ -46,8 +45,8 @@ func (st *LevelDBMock) NewTransaction() storage.Transaction {
 // LevelDB Mock transaction structure
 //-------------------------------
 type levelDBTransactionMock struct {
-	pipeline         []zex.Cmd
-	storage          *LevelDBMock
+	pipeline []zex.Cmd
+	storage  *LevelDBMock
 }
 
 func (t *levelDBTransactionMock) Put(k []byte, v []byte) {
@@ -79,8 +78,8 @@ func NewMockIterator(cmdSlice *[]zex.Cmd) storage.Iterator {
 }
 
 type MockIterator struct {
-	pipeline    []zex.Cmd
-	current     int
+	pipeline []zex.Cmd
+	current  int
 }
 
 func (i *MockIterator) Next() bool {
@@ -96,7 +95,6 @@ func (i *MockIterator) Next() bool {
 func (i *MockIterator) Release() {
 	i.current = -1
 }
-
 
 func (i *MockIterator) Key() []byte {
 	cmd := i.pipeline[i.current]
