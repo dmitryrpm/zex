@@ -2,8 +2,10 @@ package leveldb
 
 import (
 	ld "github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	"github.com/dmitryrpm/zex/storage"
+	"github.com/syndtr/goleveldb/leveldb/opt"
 )
 
 // ---------------------------
@@ -14,13 +16,14 @@ func New(path string) (db *LevelDB, err error) {
 	if err != nil {
 		return
 	}
-	return &LevelDB{DB: levelDB}, err
+	return &LevelDB{DB: levelDB, ErrNotFound: errors.ErrNotFound}, err
 }
 
 // ---------------------------
 // LevelDB structure
 //---------------------------
 type LevelDB struct {
+	ErrNotFound error
 	DB *ld.DB
 }
 
@@ -47,6 +50,18 @@ func (st *LevelDB) NewTransaction() storage.Transaction {
 		storage: st,
 		batch:   new(ld.Batch),
 	}
+}
+
+func (st *LevelDB) Get(key []byte, ro *opt.ReadOptions) (value []byte, err error) {
+	return st.DB.Get(key,ro)
+}
+
+func (st *LevelDB) Put(key, value []byte, wo *opt.WriteOptions) error {
+	return st.DB.Put(key, value, wo)
+}
+
+func (st *LevelDB) IsErrNotFound(e error) bool {
+	return e == st.ErrNotFound
 }
 
 //--------------------------------

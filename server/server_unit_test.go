@@ -152,7 +152,7 @@ func TestRunPipelineUnits(t *testing.T) {
 					Body: []byte("aaaa"),
 				},
 			},
-			countRows: 1,
+			countRows: 2,
 			expCallerCmd: []string{
 				fmt.Sprintf("/A.A/CallC(aaaa)->%s", errStrLetency),
 			},
@@ -174,17 +174,15 @@ func TestRunPipelineUnits(t *testing.T) {
 			impl.PathToServices = tc.setPathToServices
 			impl.RegisterServices = tc.setRegisterServices
 
-			tr := storageMock.NewTransaction()
 			for _, cmd := range tc.pipeline {
 				str := tc.pid + "_" + cmd.Path
-				tr.Put([]byte(str), []byte(cmd.Body))
+				impl.DB.Put([]byte(str), []byte(cmd.Body), nil)
 			}
-			tr.Commit()
 
 			impl.runPipeline(tc.pid)
 			count := impl.DB.GetRowsCount()
 			if count != tc.countRows {
-				tt.Errorf("mock rows shoude be %s,"+
+				tt.Errorf("mock rows shoude be %d,"+
 					" but we have rows \"%v\"", tc.countRows, count)
 			}
 
@@ -272,18 +270,16 @@ func TestSubscribeUnits(t *testing.T) {
 		t.Run(tc.desc, func(tt *testing.T) {
 			m := &mockInvoker{}
 			storageMock, _ := mock.NewMock("test")
-			tr := storageMock.NewTransaction()
-			for _, cmd := range tc.pipeline {
-				str := tc.pid + "_" + cmd.Path
-				tr.Put([]byte(str), []byte(cmd.Body))
-			}
-			if len(tc.pipeline) > 0 {
-				tr.Put([]byte(tc.pid+"_status"), tc.status)
-			}
-			tr.Commit()
 			impl := NewMock(m.Invoke, storageMock, m.Dial)
 			impl.defaultLoopTimeout = 20 * time.Microsecond
 			impl.defaultTimeout = tc.defaultTimeout
+			for _, cmd := range tc.pipeline {
+				str := tc.pid + "_" + cmd.Path
+				impl.DB.Put([]byte(str), []byte(cmd.Body), nil)
+			}
+			if len(tc.pipeline) > 0 {
+				impl.DB.Put([]byte("status_" + tc.pid), tc.status, nil)
+			}
 
 			ctx, _ := context.WithTimeout(context.Background(), tc.cancelTimeout)
 

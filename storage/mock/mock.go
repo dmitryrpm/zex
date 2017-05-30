@@ -3,6 +3,9 @@ package mock
 import (
 	"github.com/dmitryrpm/zex/proto"
 	"github.com/dmitryrpm/zex/storage"
+	"github.com/syndtr/goleveldb/leveldb/opt"
+	"errors"
+	"google.golang.org/grpc/grpclog"
 )
 
 // ---------------------------
@@ -11,7 +14,8 @@ import (
 func NewMock(_ string) (db *LevelDBMock, err error) {
 	pipeline := make([]zex.Cmd, 0)
 	return &LevelDBMock{
-		pipeline: pipeline,
+		Pipeline: pipeline,
+		ErrNotFound: errors.New("not found, mock"),
 	}, nil
 }
 
@@ -20,25 +24,46 @@ func NewMock(_ string) (db *LevelDBMock, err error) {
 //---------------------------
 
 type LevelDBMock struct {
-	pipeline     []zex.Cmd
+	ErrNotFound   error
+	Pipeline     []zex.Cmd
 	mockIterator storage.Iterator
 }
 
 func (st *LevelDBMock) GetIterator(start string, stop string) storage.Iterator {
-	return NewMockIterator(&st.pipeline)
+	return NewMockIterator(&st.Pipeline)
 }
 
 func (st *LevelDBMock) GetRowsCount() int {
-	return len(st.pipeline)
+	return len(st.Pipeline)
 }
 
 func (st *LevelDBMock) NewTransaction() storage.Transaction {
-	pipeline := make([]zex.Cmd, len(st.pipeline))
-	copy(pipeline, st.pipeline)
+	pipeline := make([]zex.Cmd, len(st.Pipeline))
+	copy(pipeline, st.Pipeline)
 	return &levelDBTransactionMock{
 		pipeline: pipeline,
 		storage:  st,
 	}
+}
+
+func (st *LevelDBMock) Get(key []byte, ro *opt.ReadOptions) (value []byte, err error) {
+	for _, pipe := range st.Pipeline {
+		if string(key) == pipe.Path {
+			return pipe.Body, nil
+		}
+	}
+	return nil, st.ErrNotFound
+}
+
+func (st *LevelDBMock) Put(key, value []byte, wo *opt.WriteOptions) error {
+	kStr := string(key)
+	st.Pipeline = append(st.Pipeline,
+		zex.Cmd{zex.CmdType_INVOKE, kStr, value})
+	return nil
+}
+
+func (st *LevelDBMock) IsErrNotFound(e error) bool {
+	return e == st.ErrNotFound
 }
 
 //--------------------------------
@@ -50,13 +75,11 @@ type levelDBTransactionMock struct {
 }
 
 func (t *levelDBTransactionMock) Put(k []byte, v []byte) {
-	kStr := string(k)
-	cmd := zex.Cmd{zex.CmdType_INVOKE, kStr, v}
-	t.pipeline = append(
-		t.pipeline, cmd)
+	t.storage.Put(k, v, nil)
 }
 
 func (t *levelDBTransactionMock) Delete(k []byte) {
+	grpclog.Println("delete ", string(k))
 	for i, cmd := range t.pipeline {
 		if cmd.Path == string(k) {
 			t.pipeline = t.pipeline[:i+copy(t.pipeline[i:], t.pipeline[i+1:])]
@@ -65,7 +88,7 @@ func (t *levelDBTransactionMock) Delete(k []byte) {
 }
 
 func (t *levelDBTransactionMock) Commit() error {
-	t.storage.pipeline = t.pipeline
+	t.storage.Pipeline = t.pipeline
 	return nil
 }
 

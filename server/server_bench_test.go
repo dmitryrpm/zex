@@ -1,7 +1,14 @@
 package server
 
-import "testing"
+import (
+	"testing"
+)
 
-func BenchmarkFib10(t *testing.B) {
-	t.Skip("need banchmark")
+func BenchmarkFib10(b *testing.B) {
+
+	//for n := 0; n < b.N; n++ {
+	//	Fib(10)
+	//}
+
+
 }

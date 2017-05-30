@@ -1,5 +1,7 @@
 package storage
 
+import "github.com/syndtr/goleveldb/leveldb/opt"
+
 // Abstract Interface for Databases (Facade-pattern)
 type Database interface {
 	// Get iterator [0..n] rows
@@ -8,6 +10,9 @@ type Database interface {
 	NewTransaction() Transaction
 	// Get count all rows into db
 	GetRowsCount() int
+        Get(key []byte, ro *opt.ReadOptions) (value []byte, err error)
+        Put(key, value []byte, wo *opt.WriteOptions) error
+	IsErrNotFound (error) bool
 }
 
 // Iterator interface

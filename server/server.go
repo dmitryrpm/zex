@@ -221,7 +221,7 @@ func (s *zexServer) Pipeline(stream zex.Zex_PipelineServer) error {
 		} else {
 			grpclog.Println("Add cmd to pipeline", cmd)
 			transation.Put([]byte(pid+"_"+cmd.Path), cmd.Body)
-			transation.Put([]byte(pid+"_status"), make([]byte, 0))
+			transation.Put([]byte("status_" + pid), make([]byte, 0))
 			pipeline = append(pipeline, cmd)
 		}
 	}
@@ -235,30 +235,23 @@ func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, er
 
 	// add timeout
 	// FIXME add timeout parameter to function Subscribe(ctx context.Context, pid *zex.Pid, timeout time)
-	ctxTimeout, _ := context.WithTimeout(context.Background(), s.defaultTimeout)
+	ctxTimeout, cancel := context.WithTimeout(context.Background(), s.defaultTimeout)
+	defer cancel()
 
 	if s.isExistsPid(pid.ID) {
 		// If pid exists, need check status error or invoke
-		pidStatusKey := pid.ID + "_status"
+		pidStatusKey := []byte("status_" + pid.ID)
 		for {
 			// Add sleep for polling
-			isExists := false
-			iter := s.DB.GetIterator(pid.ID, "")
-			for iter.Next() {
-				if string(iter.Key()) == pidStatusKey {
-					isExists = true
-					// If nil pipeline in process, wait errors
-					if len(string(iter.Value())) != 0 {
-						grpclog.Printf("subscribe return answer with error: %s", string(iter.Value()))
-						return &zex.Empty{}, errors.New(string(iter.Value()))
-					}
-				}
-			}
-			iter.Release()
-			// If does not exists, done pipeline correct
-			if !isExists {
+			value, err := s.DB.Get(pidStatusKey, nil)
+			if s.DB.IsErrNotFound(err) {
 				grpclog.Println("subscribe return answer with status nil, all pipeline done correct")
-				return &zex.Empty{}, nil
+				return &zex.Empty{}, err
+			}
+
+			if len(string(value)) != 0 {
+				grpclog.Printf("subscribe return answer with error: %s", string(string(value)))
+				return &zex.Empty{}, errors.New(string(value))
 			}
 			// check timeout and context cancel
 			select {
@@ -302,33 +295,28 @@ func (s *zexServer) runPipeline(pid string) {
 
 	// create batch transaction
 	transationDel := s.DB.NewTransaction()
-	transationErr := s.DB.NewTransaction()
 
 	// iterate to leveldb
 	iter := s.DB.GetIterator(pid, "")
-	pidStatus := pid + "_status"
 	for iter.Next() {
 		key := iter.Key()
 		strKey := string(key)
-		if strKey != pidStatus {
-			// collect all pipelines
-			value := iter.Value()
-			grpclog.Printf("body: %s", string(value))
+		// collect all pipelines
+		value := iter.Value()
 
-			// bad
-			//body := value
+		// bad
+		//body := value
 
-			// good
-			body := make([]byte, len(value))
-			copy(body, value)
+		// good
+		body := make([]byte, len(value))
+		copy(body, value)
 
-			cmd := zex.Cmd{
-				zex.CmdType(1), strings.Split(strKey, "_")[1],
-				body}
+		cmd := zex.Cmd{
+			zex.CmdType(1), strings.Split(strKey, "_")[1],
+			body}
 
-			pipeline = append(pipeline, cmd)
-			grpclog.Printf("%s", pipeline)
-		}
+		pipeline = append(pipeline, cmd)
+		grpclog.Printf("%s", pipeline)
 
 		transationDel.Delete(key)
 	}
@@ -359,17 +347,8 @@ func (s *zexServer) runPipeline(pid string) {
 		// incorrect requests
 		if err != nil {
 			grpclog.Printf("command was failed by id %s: %s", pid, err)
-
 			// Update status if incorrect request
-			iter := s.DB.GetIterator(pid, "")
-			for iter.Next() {
-				key := iter.Key()
-				if string(key) == pid+"_status" {
-					transationErr.Put(key, []byte(err.Error()))
-				}
-			}
-			iter.Release()
-			transationErr.Commit()
+			s.DB.Put([]byte("status_"+pid), []byte(err.Error()), nil)
 			// If one of this fail, all failed
 			cancel()
 			return
