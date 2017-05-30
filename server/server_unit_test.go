@@ -204,68 +204,6 @@ func TestRunPipelineUnits(t *testing.T) {
 	}
 }
 
-//Test pipeline
-//type PipelineTestCase struct {
-//	pipeline            []*zex.Cmd
-//	pid           string
-//	desc          string
-//	status        []byte
-//	error          error
-//}
-//
-//type PipelineStreamMock struct {
-//	r int
-//	pipeline            []*zex.Cmd
-//	grpc.ServerStream
-//}
-//
-//func (p *PipelineStreamMock) SendAndClose(pid *zex.Pid) error {
-//	return nil
-//}
-//
-//func (p *PipelineStreamMock) Recv() (*zex.Cmd, error) {
-//	p.r++
-//	err := io.EOF
-//	if p.r == len(p.pipeline){
-//		err = nil
-//	}
-//	return p.pipeline[p.r], err
-//}
-//
-//
-//func TestPipelineUnits(t *testing.T) {
-//
-//	RegMocks := []PipelineTestCase{
-//		{
-//			desc:          "test correct pipeline service",
-//			pid:           "pipe-1",
-//			pipeline: 	[]*zex.Cmd{
-//				{
-//					Path: "/A.A/CallC",
-//					Body: []byte("aaaa"),
-//				},
-//				{
-//					Path: "/A.A/CallB",
-//					Body: []byte("aaaa"),
-//				},
-//			},
-//		},
-//	}
-//	for _, tc := range RegMocks {
-//		t.Run(tc.desc, func(tt *testing.T) {
-//			m := &mockInvoker{}
-//			storageMock, _ := mock.NewMock("test")
-//			impl := NewMock(m.Invoke, storageMock, m.Dial)
-//			stream := &PipelineStreamMock{}
-//			stream.pipeline = tc.pipeline
-//			err := impl.Pipeline(stream)
-//
-//
-//		})
-//	}
-//
-//}
-
 
 type SubscribeTestCase struct {
 	pipeline            []*zex.Cmd
@@ -406,3 +344,66 @@ func TestRegisterUnits(t *testing.T) {
 	}
 
 }
+
+
+//Test pipeline
+//type PipelineTestCase struct {
+//	pipeline            []*zex.Cmd
+//	pid           string
+//	desc          string
+//	status        []byte
+//	error          error
+//}
+//
+//type PipelineStreamMock struct {
+//	r int
+//	pipeline            []*zex.Cmd
+//	grpc.ServerStream
+//}
+//
+//func (p *PipelineStreamMock) SendAndClose(pid *zex.Pid) error {
+//	return nil
+//}
+//
+//func (p *PipelineStreamMock) Recv() (*zex.Cmd, error) {
+//	p.r++
+//	err := io.EOF
+//	if p.r == len(p.pipeline){
+//		err = nil
+//	}
+//	return p.pipeline[p.r], err
+//}
+//
+//
+//func TestPipelineUnits(t *testing.T) {
+//
+//	RegMocks := []PipelineTestCase{
+//		{
+//			desc:          "test correct pipeline service",
+//			pid:           "pipe-1",
+//			pipeline: 	[]*zex.Cmd{
+//				{
+//					Path: "/A.A/CallC",
+//					Body: []byte("aaaa"),
+//				},
+//				{
+//					Path: "/A.A/CallB",
+//					Body: []byte("aaaa"),
+//				},
+//			},
+//		},
+//	}
+//	for _, tc := range RegMocks {
+//		t.Run(tc.desc, func(tt *testing.T) {
+//			m := &mockInvoker{}
+//			storageMock, _ := mock.NewMock("test")
+//			impl := NewMock(m.Invoke, storageMock, m.Dial)
+//			stream := &PipelineStreamMock{}
+//			stream.pipeline = tc.pipeline
+//			err := impl.Pipeline(stream)
+//
+//
+//		})
+//	}
+//
+//}
