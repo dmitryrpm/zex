@@ -83,7 +83,18 @@ type MockZexServer struct {
 
 	countRows int
 	expCallerCmd []string
+
 }
+
+
+type SubscribeTestCase struct {
+	pipeline            []*zex.Cmd
+	pid           string
+	desc          string
+	status        []byte
+	error          error
+}
+
 
 type MockDbLevel struct {
 	batch *leveldb.Batch
@@ -97,14 +108,15 @@ func (db *MockDbLevel) Write(batch *leveldb.Batch, wo *opt.WriteOptions) error {
 	return nil
 }
 
-func TestUnits(t *testing.T) {
+// Pipeline tests
+func TestPipelineUnits(t *testing.T) {
 
 	errStrLetency := fmt.Sprintf("waiting %s", timeLetency)
 
 	zexMocks := []MockZexServer{
 		{
 			desc: "test Pipeline + runPipeline success simple",
-			pid: "pid-1",
+			pid:  "pid-1",
 			setPathToServices: map[string][]string{
 				"/A.A/CallC": []string{"localhost:2345"},
 				"/A.A/CallB": []string{"localhost:2345"},
@@ -130,10 +142,10 @@ func TestUnits(t *testing.T) {
 
 		},
 		{
-			desc: fmt.Sprintf("test Pipeline + runPipeoine fail with letency %s", errStrLetency),
-			pid: "pid-2",
+			desc:          fmt.Sprintf("test Pipeline + runPipeoine fail with letency %s", errStrLetency),
+			pid:           "pid-2",
 			invokeLetency: timeLetency,
-			invokeErr: errors.New(errStrLetency),
+			invokeErr:     errors.New(errStrLetency),
 			setPathToServices: map[string][]string{
 				"/A.A/CallC": []string{"localhost:2345"},
 			},
@@ -162,7 +174,6 @@ func TestUnits(t *testing.T) {
 				letency:  tc.invokeLetency,
 			}
 
-
 			// example for show how work with options
 			storageMock, _ := mock.NewMock("test")
 			impl := NewMock(m.Invoke, storageMock)
@@ -178,8 +189,8 @@ func TestUnits(t *testing.T) {
 
 			impl.runPipeline(tc.pid)
 			count := impl.DB.GetRowsCount()
-			if  count != tc.countRows {
-				tt.Errorf("mock rows shoude be %s," +
+			if count != tc.countRows {
+				tt.Errorf("mock rows shoude be %s,"+
 					" but we have rows \"%v\"", tc.countRows, count)
 			}
 
@@ -192,12 +203,69 @@ func TestUnits(t *testing.T) {
 			}
 		})
 	}
+}
 
+// Subscribe tests
+func TestSubscribeUnits(t *testing.T) {
+	subMocks := []SubscribeTestCase{
+		{
+			desc: "test correct subscribe empty",
+			pid:  "pid-3",
+			pipeline: []*zex.Cmd{},
+			status: make([]byte, 0),
+			error: nil,
+		},
+		{
+			desc: "test correct subscribe with waiting",
+			pid:  "pid-4",
+			pipeline: []*zex.Cmd{},
+			status: make([]byte, 0),
+			error: errors.New("context cancel"),
+		},{
+			desc: "test with errors subscribe",
+			pid:  "pid-5",
+			pipeline: []*zex.Cmd{
+				{
+					Path: "/A.A/CallC",
+					Body: []byte("aaaa"),
+				},
+				{
+					Path: "/A.A/CallB",
+					Body: []byte("bbbb"),
+				},
+			},
+			status: []byte("incorrect request"),
+			error: errors.New("incorrect request"),
+		},
+	}
 
-	t.Run("test subscribe services", func(tt *testing.T) {
-		tt.Skip("need add test")
-	})
+	for _, tc := range subMocks {
+		t.Run(tc.desc, func(tt *testing.T) {
+			m := &mockInvoker{}
+			storageMock, _ := mock.NewMock("test")
+			tr := storageMock.NewTransaction()
+			for _, cmd := range tc.pipeline {
+				str := tc.pid + "_" + cmd.Path
+				tr.Put([]byte(str), []byte(cmd.Body))
+			}
+			if len(tc.pipeline) > 0{
+				tr.Put([]byte(tc.pid + "_status"), tc.status)
+			}
+			tr.Commit()
+			impl := NewMock(m.Invoke, storageMock)
+			ctx := context.Background()
+			ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+			defer cancel()
+			_, errS := impl.Subscribe(ctx, &zex.Pid{ID: tc.pid})
+			if errS != nil && errS.Error() != tc.error.Error() {
+				tt.Errorf("error in subsribe call no correct _%s_ need _%s_", errS, tc.error)
+			}
 
+		})
+	}
+}
+
+func TestRegisterUnits(t *testing.T) {
 	t.Run("test registry services", func(tt *testing.T) {
 		tt.Skip("need add test")
 	})

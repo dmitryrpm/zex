@@ -226,8 +226,7 @@ func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, er
 			isExists := false
 			iter := s.DB.GetIterator(pid.ID, "")
 			for iter.Next() {
-				key := string(iter.Key())
-				if key == pidStatusKey {
+				if  string(iter.Key()) == pidStatusKey {
 					isExists = true
 					grpclog.Printf("check pid %s => status '%s'", pid, iter.Value())
 					// If nil pipeline in process, wait errors
@@ -237,12 +236,17 @@ func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, er
 					}
 				}
 			}
+			iter.Release()
 			// If does not exists, done pipeline correct
 			if !isExists {
 				grpclog.Println("subscribe return answer with status nil, all pipeline done correct")
 				return &zex.Empty{}, nil
 			}
-			iter.Release()
+
+			select {
+			case <-ctx.Done():
+				return &zex.Empty{}, errors.New("context cancel")
+			}
 		}
 	}
 	// If pid does not exist, this is done correct
@@ -277,12 +281,13 @@ func (s *zexServer) runPipeline(pid string) {
 
 	// iterate to leveldb
 	iter := s.DB.GetIterator(pid, "")
+	pidStatus := pid + "_status"
 	for iter.Next() {
 		key := iter.Key()
 		strKey := string(key)
-		value := iter.Value()
-		if strKey != pid + "_status" {
+		if strKey != pidStatus{
 			// collect all pipelines
+			value := iter.Value()
 			grpclog.Printf("body: %s", string(value))
 
 			// bad
