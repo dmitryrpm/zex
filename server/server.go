@@ -24,10 +24,12 @@ import (
 
 // Invoker function for mock
 type Invoker func(ctx context.Context, method string, args, reply interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) error
+type Dialer func (target string, opts ...grpc.DialOption) (*grpc.ClientConn, error)
+
 
 
 // New MOCK constructor for Tests
-func NewMock(invoker Invoker, DB storage.Database) *zexServer {
+func NewMock(invoker Invoker, DB storage.Database, dialer Dialer) *zexServer {
 	return &zexServer{
 		lockForRegger:    &sync.RWMutex{},
 		RegisterServices: make(map[string]*grpc.ClientConn),
@@ -37,6 +39,7 @@ func NewMock(invoker Invoker, DB storage.Database) *zexServer {
 
 		Invoke:           invoker,
 		DB:               DB,
+		Dial:             dialer,
 	}
 }
 
@@ -56,6 +59,7 @@ func New(DB storage.Database) *zexServer {
 		Invoke:           grpc.Invoke,
 		// DB link
 		DB:               DB,
+		Dial:             grpc.Dial,
 	}
 }
 
@@ -69,7 +73,9 @@ type zexServer struct {
 	PathToServices   map[string][]string
 
 	Invoke           Invoker
+	Dial             Dialer
 	DB               storage.Database
+
 }
 
 
@@ -82,17 +88,23 @@ func (s *zexServer) Register(ctx context.Context, service *zex.Service) (*zex.Em
 	serviceKey := service.Addr + "/" + service.Name
 	grpclog.Printf("start get all methods in registred \"%s\" services", serviceKey)
 
+	// get host, port
+	ss := strings.Split(service.Addr, ":")
+
+	var host string
+	if len(ss) == 2 {
+		host, _ = ss[0], ss[1]
+	} else {
+		return nil, errors.New("incorrect format host:port")
+	}
+
 	// create connect
-	conn, err := grpc.Dial(service.Addr, grpc.WithInsecure())
+	conn, err := s.Dial(service.Addr, grpc.WithInsecure())
 	if err != nil {
 		grpclog.Printf("did not connect: %v", err)
 		conn.Close()
 		return nil, err
 	}
-
-	// get host, port
-	ss := strings.Split(service.Addr, ":")
-	host, _ := ss[0], ss[1]
 
 	// get services info
 	c := rpb.NewServerReflectionClient(conn)

@@ -68,6 +68,25 @@ func (m *mockInvoker) Invoke(ctx context.Context, method string, args, reply int
 	return err
 }
 
+func (m *mockInvoker) Dial (target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+	var (
+		err error
+	)
+	err = m.err
+	return &grpc.ClientConn{}, err
+}
+
+type MockDbLevel struct {
+	batch *leveldb.Batch
+}
+
+
+func (db *MockDbLevel) Write(batch *leveldb.Batch, wo *opt.WriteOptions) error {
+	if batch == nil || batch.Len() == 0 {
+		return errors.New("batch null")
+	}
+	return nil
+}
 
 type MockZexServer struct {
 	desc string
@@ -86,28 +105,6 @@ type MockZexServer struct {
 
 }
 
-
-type SubscribeTestCase struct {
-	pipeline            []*zex.Cmd
-	cancelTimeout time.Duration
-	pid           string
-	desc          string
-	status        []byte
-	error          error
-}
-
-
-type MockDbLevel struct {
-	batch *leveldb.Batch
-}
-
-
-func (db *MockDbLevel) Write(batch *leveldb.Batch, wo *opt.WriteOptions) error {
-	if batch == nil || batch.Len() == 0 {
-		return errors.New("batch null")
-	}
-	return nil
-}
 
 // Pipeline tests
 func TestPipelineUnits(t *testing.T) {
@@ -177,7 +174,7 @@ func TestPipelineUnits(t *testing.T) {
 
 			// example for show how work with options
 			storageMock, _ := mock.NewMock("test")
-			impl := NewMock(m.Invoke, storageMock)
+			impl := NewMock(m.Invoke, storageMock, m.Dial)
 			impl.PathToServices = tc.setPathToServices
 			impl.RegisterServices = tc.setRegisterServices
 
@@ -205,6 +202,17 @@ func TestPipelineUnits(t *testing.T) {
 		})
 	}
 }
+
+
+type SubscribeTestCase struct {
+	pipeline            []*zex.Cmd
+	cancelTimeout time.Duration
+	pid           string
+	desc          string
+	status        []byte
+	error          error
+}
+
 
 // Subscribe tests
 func TestSubscribeUnits(t *testing.T) {
@@ -274,30 +282,58 @@ func TestSubscribeUnits(t *testing.T) {
 				tr.Put([]byte(tc.pid + "_status"), tc.status)
 			}
 			tr.Commit()
-			impl := NewMock(m.Invoke, storageMock)
+			impl := NewMock(m.Invoke, storageMock, m.Dial)
 
 			ctx, cancel := context.WithTimeout(context.Background(), tc.cancelTimeout)
 			defer cancel()
 
 			_, errS := impl.Subscribe(ctx, &zex.Pid{ID: tc.pid})
-
-			if errS != nil {
-				if errS.Error() != tc.error.Error() {
-					tt.Errorf("error in subsribe call no correct _%s_ need _%s_", errS, tc.error)
-				}
-			} else {
-				if errS != tc.error {
-					tt.Errorf("error in subsribe call no correct _%v_ need _%s_", errS, tc.error)
-				}
+			if errS == nil && errS != tc.error ||
+				errS != nil && errS.Error() != tc.error.Error() {
+				tt.Errorf("error in subsribe call no correct '%v' need '%s'", errS, tc.error)
 			}
+
 		})
 	}
 
 
 }
 
+
+type RegisterTestCase struct {
+	service       zex.Service
+	pid           string
+	desc          string
+	error          error
+}
+
+
 func TestRegisterUnits(t *testing.T) {
-	t.Run("test registry services", func(tt *testing.T) {
-		tt.Skip("need add test")
-	})
+	RegMocks := []RegisterTestCase{
+		{
+			desc:          "test incorrect service format",
+			pid:           "reg-1",
+			service:       zex.Service{"xxx", "xxx.com"},
+			error: 		errors.New("incorrect format host:port"),
+		},
+		//{
+		//	desc:          "test correct service",
+		//	pid:           "reg-1",
+		//	service:       zex.Service{"google.com", "google.com:80"},
+		//	error: 		errors.New("incorrect format host:port"),
+		//},
+	}
+	for _, tc := range RegMocks {
+		t.Run("test registry services", func(tt *testing.T) {
+			m := &mockInvoker{}
+			storageMock, _ := mock.NewMock("test")
+			impl := NewMock(m.Invoke, storageMock, m.Dial)
+			_, errS := impl.Register(context.Background(), &tc.service)
+			if errS == nil && errS != tc.error ||
+				errS != nil && errS.Error() != tc.error.Error() {
+				tt.Errorf("error in subsribe call no correct '%v' need '%s'", errS, tc.error)
+			}
+		})
+	}
+
 }
