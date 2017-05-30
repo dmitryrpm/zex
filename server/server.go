@@ -214,15 +214,24 @@ func (s *zexServer) Pipeline(stream zex.Zex_PipelineServer) error {
 	return nil
 }
 
+const defaultTimeout = 3 * time.Second
+const defaultLoopTimeout = 200 * time.Microsecond
+
 // Subscribe services interface impl
 func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, error) {
 	grpclog.Printf("subscribe uuid %s", pid.ID)
+
+	// add timeout
+	// FIXME add timeout parameter to function Subscribe(ctx context.Context, pid *zex.Pid, timeout time)
+	ctxTimeout, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+	defer cancel()
+
 	if s.isExistsPid(pid.ID) {
 		// If pid exists, need check status error or invoke
 		pidStatusKey := pid.ID + "_status"
 		for {
 			// Add sleep for polling
-			time.Sleep(200 * time.Microsecond)
+			time.Sleep(defaultLoopTimeout)
 			isExists := false
 			iter := s.DB.GetIterator(pid.ID, "")
 			for iter.Next() {
@@ -242,10 +251,14 @@ func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, er
 				grpclog.Println("subscribe return answer with status nil, all pipeline done correct")
 				return &zex.Empty{}, nil
 			}
-
+			// check timeout and context cancel
 			select {
 			case <-ctx.Done():
+				grpclog.Printf("contect canceled, return error")
 				return &zex.Empty{}, errors.New("context cancel")
+			case <-ctxTimeout.Done():
+				grpclog.Printf("timeout, more when %s return error", defaultTimeout)
+				return &zex.Empty{}, errors.New("timeout")
 			}
 		}
 	}

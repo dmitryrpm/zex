@@ -89,6 +89,7 @@ type MockZexServer struct {
 
 type SubscribeTestCase struct {
 	pipeline            []*zex.Cmd
+	cancelTimeout time.Duration
 	pid           string
 	desc          string
 	status        []byte
@@ -214,13 +215,33 @@ func TestSubscribeUnits(t *testing.T) {
 			pipeline: []*zex.Cmd{},
 			status: make([]byte, 0),
 			error: nil,
+			cancelTimeout: 500*time.Millisecond,
+		},
+		{
+			desc: "test correct subscribe with timeout",
+			pid:  "pid-6",
+			pipeline: []*zex.Cmd{
+				{
+					Path: "/A.A/CallC",
+					Body: []byte("aaaa"),
+				},
+			},
+			status: make([]byte, 0),
+			error: errors.New("timeout"),
+			cancelTimeout: 5000*time.Millisecond,
 		},
 		{
 			desc: "test correct subscribe with waiting",
 			pid:  "pid-4",
-			pipeline: []*zex.Cmd{},
+			pipeline: []*zex.Cmd{
+				{
+					Path: "/A.A/CallC",
+					Body: []byte("aaaa"),
+				},
+			},
 			status: make([]byte, 0),
 			error: errors.New("context cancel"),
+			cancelTimeout: 500*time.Millisecond,
 		},{
 			desc: "test with errors subscribe",
 			pid:  "pid-5",
@@ -236,6 +257,7 @@ func TestSubscribeUnits(t *testing.T) {
 			},
 			status: []byte("incorrect request"),
 			error: errors.New("incorrect request"),
+			cancelTimeout: 500*time.Millisecond,
 		},
 	}
 
@@ -248,21 +270,30 @@ func TestSubscribeUnits(t *testing.T) {
 				str := tc.pid + "_" + cmd.Path
 				tr.Put([]byte(str), []byte(cmd.Body))
 			}
-			if len(tc.pipeline) > 0{
+			if len(tc.pipeline) > 0 {
 				tr.Put([]byte(tc.pid + "_status"), tc.status)
 			}
 			tr.Commit()
 			impl := NewMock(m.Invoke, storageMock)
-			ctx := context.Background()
-			ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
-			defer cancel()
-			_, errS := impl.Subscribe(ctx, &zex.Pid{ID: tc.pid})
-			if errS != nil && errS.Error() != tc.error.Error() {
-				tt.Errorf("error in subsribe call no correct _%s_ need _%s_", errS, tc.error)
-			}
 
+			ctx, cancel := context.WithTimeout(context.Background(), tc.cancelTimeout)
+			defer cancel()
+
+			_, errS := impl.Subscribe(ctx, &zex.Pid{ID: tc.pid})
+
+			if errS != nil {
+				if errS.Error() != tc.error.Error() {
+					tt.Errorf("error in subsribe call no correct _%s_ need _%s_", errS, tc.error)
+				}
+			} else {
+				if errS != tc.error {
+					tt.Errorf("error in subsribe call no correct _%v_ need _%s_", errS, tc.error)
+				}
+			}
 		})
 	}
+
+
 }
 
 func TestRegisterUnits(t *testing.T) {
