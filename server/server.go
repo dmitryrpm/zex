@@ -24,12 +24,10 @@ import (
 
 // Invoker function for mock
 type Invoker func(ctx context.Context, method string, args, reply interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) error
-type Dialer func (target string, opts ...grpc.DialOption) (*grpc.ClientConn, error)
-
+type Dialer func(target string, opts ...grpc.DialOption) (*grpc.ClientConn, error)
 
 const defaultTimeout = 3 * time.Second
 const defaultLoopTimeout = 200 * time.Microsecond
-
 
 // New MOCK constructor for Tests
 func NewMock(invoker Invoker, DB storage.Database, dialer Dialer) *zexServer {
@@ -37,17 +35,16 @@ func NewMock(invoker Invoker, DB storage.Database, dialer Dialer) *zexServer {
 		lockForRegger:    &sync.RWMutex{},
 		RegisterServices: make(map[string]*grpc.ClientConn),
 
-		lockForPather:    &sync.RWMutex{},
-		PathToServices:   make(map[string][]string),
+		lockForPather:  &sync.RWMutex{},
+		PathToServices: make(map[string][]string),
 
-		Invoke:           invoker,
-		DB:               DB,
-		Dial:             dialer,
-		defaultTimeout:        defaultTimeout,
-		defaultLoopTimeout:   defaultLoopTimeout,
+		Invoke:             invoker,
+		DB:                 DB,
+		Dial:               dialer,
+		defaultTimeout:     defaultTimeout,
+		defaultLoopTimeout: defaultLoopTimeout,
 	}
 }
-
 
 // New constructor
 func New(DB storage.Database) *zexServer {
@@ -58,36 +55,33 @@ func New(DB storage.Database) *zexServer {
 		RegisterServices: make(map[string]*grpc.ClientConn),
 		// Services path <host>:<port>/<service_name> => <path>
 		// (127.0.0.1:54322/A => /A.A/CallA)
-		lockForPather:    &sync.RWMutex{},
-		PathToServices:   make(map[string][]string),
+		lockForPather:  &sync.RWMutex{},
+		PathToServices: make(map[string][]string),
 		// Invocker link
-		Invoke:           grpc.Invoke,
+		Invoke: grpc.Invoke,
 		// DB link
-		DB:               DB,
-		Dial:             grpc.Dial,
-		defaultTimeout:        defaultTimeout,
-		defaultLoopTimeout:    defaultLoopTimeout,
+		DB:                 DB,
+		Dial:               grpc.Dial,
+		defaultTimeout:     defaultTimeout,
+		defaultLoopTimeout: defaultLoopTimeout,
 	}
 }
-
 
 // zexServer structure
 type zexServer struct {
 	lockForRegger    *sync.RWMutex
 	RegisterServices map[string]*grpc.ClientConn
 
-	lockForPather    *sync.RWMutex
-	PathToServices   map[string][]string
+	lockForPather  *sync.RWMutex
+	PathToServices map[string][]string
 
-	Invoke           Invoker
-	Dial             Dialer
-	DB               storage.Database
+	Invoke Invoker
+	Dial   Dialer
+	DB     storage.Database
 
 	defaultTimeout     time.Duration
 	defaultLoopTimeout time.Duration
-
 }
-
 
 // Register services interface impl
 func (s *zexServer) Register(ctx context.Context, service *zex.Service) (*zex.Empty, error) {
@@ -148,7 +142,7 @@ func (s *zexServer) Register(ctx context.Context, service *zex.Service) (*zex.Em
 	for _, srv := range info.GetListServicesResponse().GetService() {
 		if srv.Name != "grpc.reflection.v1alpha.ServerReflection" && srv.Name != "zex.Zex" {
 			err = informer.Send(&rpb.ServerReflectionRequest{
-				Host: host,
+				Host:           host,
 				MessageRequest: &rpb.ServerReflectionRequest_FileContainingSymbol{FileContainingSymbol: srv.Name},
 			})
 			if err != nil {
@@ -189,7 +183,6 @@ func (s *zexServer) Register(ctx context.Context, service *zex.Service) (*zex.Em
 	return &zex.Empty{}, nil
 }
 
-
 // Pipeline services interface impl
 func (s *zexServer) Pipeline(stream zex.Zex_PipelineServer) error {
 	grpclog.Printf("listen stream pipeline")
@@ -227,8 +220,8 @@ func (s *zexServer) Pipeline(stream zex.Zex_PipelineServer) error {
 			return err
 		} else {
 			grpclog.Println("Add cmd to pipeline", cmd)
-			transation.Put([]byte(pid + "_" + cmd.Path), cmd.Body)
-			transation.Put([]byte(pid + "_status"), make([]byte, 0))
+			transation.Put([]byte(pid+"_"+cmd.Path), cmd.Body)
+			transation.Put([]byte(pid+"_status"), make([]byte, 0))
 			pipeline = append(pipeline, cmd)
 		}
 	}
@@ -252,7 +245,7 @@ func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, er
 			isExists := false
 			iter := s.DB.GetIterator(pid.ID, "")
 			for iter.Next() {
-				if  string(iter.Key()) == pidStatusKey {
+				if string(iter.Key()) == pidStatusKey {
 					isExists = true
 					// If nil pipeline in process, wait errors
 					if len(string(iter.Value())) != 0 {
@@ -304,7 +297,7 @@ func (s *zexServer) runPipeline(pid string) {
 	// Get context for cancel all goroutine calls
 	var (
 		ctx, cancel = context.WithCancel(context.Background())
-		pipeline       []zex.Cmd
+		pipeline    []zex.Cmd
 	)
 
 	// create batch transaction
@@ -317,7 +310,7 @@ func (s *zexServer) runPipeline(pid string) {
 	for iter.Next() {
 		key := iter.Key()
 		strKey := string(key)
-		if strKey != pidStatus{
+		if strKey != pidStatus {
 			// collect all pipelines
 			value := iter.Value()
 			grpclog.Printf("body: %s", string(value))
@@ -340,7 +333,6 @@ func (s *zexServer) runPipeline(pid string) {
 		transationDel.Delete(key)
 	}
 	iter.Release()
-
 
 	// get count pipelines, for check all goroutines
 	lengthPipiline := len(pipeline)
@@ -372,7 +364,7 @@ func (s *zexServer) runPipeline(pid string) {
 			iter := s.DB.GetIterator(pid, "")
 			for iter.Next() {
 				key := iter.Key()
-				if string(key) == pid + "_status" {
+				if string(key) == pid+"_status" {
 					transationErr.Put(key, []byte(err.Error()))
 				}
 			}
@@ -438,7 +430,6 @@ func (s *zexServer) callCmd(ctx context.Context, cmd zex.Cmd, errC chan error) {
 	}
 	errC <- ierror
 }
-
 
 func extractFile(gz []byte) (*descriptor.FileDescriptorProto, error) {
 	fd := new(descriptor.FileDescriptorProto)
