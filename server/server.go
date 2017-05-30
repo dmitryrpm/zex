@@ -235,8 +235,7 @@ func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, er
 
 	// add timeout
 	// FIXME add timeout parameter to function Subscribe(ctx context.Context, pid *zex.Pid, timeout time)
-	ctxTimeout, cancel := context.WithTimeout(context.Background(), defaultTimeout)
-	defer cancel()
+	ctxTimeout, _ := context.WithTimeout(context.Background(), defaultTimeout)
 
 	if s.isExistsPid(pid.ID) {
 		// If pid exists, need check status error or invoke
@@ -271,6 +270,9 @@ func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, er
 			case <-ctxTimeout.Done():
 				grpclog.Printf("timeout, more when %s return error", defaultTimeout)
 				return &zex.Empty{}, errors.New("timeout")
+			default:
+				// Add sleep for polling
+				time.Sleep(defaultLoopTimeout)
 			}
 		}
 	}
