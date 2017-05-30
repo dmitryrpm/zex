@@ -280,30 +280,27 @@ func (s *zexServer) runPipeline(pid string) {
 	for iter.Next() {
 		key := iter.Key()
 		strKey := string(key)
+		value := iter.Value()
+		if strKey != pid + "_status" {
+			// collect all pipelines
+			grpclog.Printf("body: %s", string(value))
 
-		if strings.Contains(strKey, pid)  {
-			value := iter.Value()
+			// bad
+			//body := value
 
-			if strKey != pid + "_status" {
-				// collect all pipelines
-				grpclog.Printf("body: %s", string(value))
-				// bad
-				//body := value
+			// good
+			body := make([]byte, len(value))
+			copy(body, value)
 
-				// good
-				body := make([]byte, len(value))
-				copy(body, value)
+			cmd := zex.Cmd{
+				zex.CmdType(1), strings.Split(strKey, "_")[1],
+				body}
 
-				cmd := zex.Cmd{
-					zex.CmdType(1), strings.Split(strKey, "_")[1],
-					body}
-
-				pipeline = append(pipeline, cmd)
-				grpclog.Printf("%s", pipeline)
-			}
-
-			transationDel.Delete(key)
+			pipeline = append(pipeline, cmd)
+			grpclog.Printf("%s", pipeline)
 		}
+
+		transationDel.Delete(key)
 	}
 	iter.Release()
 

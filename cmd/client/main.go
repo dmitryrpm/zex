@@ -62,6 +62,8 @@ func main() {
 	stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/c.C/CallB", body2})
 	stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/c.C/CallC", body3})
 
+	//stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/d.D/CallA", body3})
+
 
 	pid, err := stream.CloseAndRecv()
 	if err == io.EOF {
