@@ -28,6 +28,7 @@ type Dialer func(target string, opts ...grpc.DialOption) (*grpc.ClientConn, erro
 
 const defaultTimeout = 3 * time.Second
 const defaultLoopTimeout = 200 * time.Microsecond
+const statusPrefix = "ST_"
 
 // New MOCK constructor for Tests
 func NewMock(invoker Invoker, DB storage.Database, dialer Dialer) *zexServer {
@@ -188,6 +189,7 @@ func (s *zexServer) Pipeline(stream zex.Zex_PipelineServer) error {
 	grpclog.Printf("listen stream pipeline")
 
 	pid := uuid.New()
+	statusPidKey := []byte(statusPrefix + pid)
 
 	pipeline := make([]*zex.Cmd, 0)
 
@@ -220,8 +222,8 @@ func (s *zexServer) Pipeline(stream zex.Zex_PipelineServer) error {
 			return err
 		} else {
 			grpclog.Println("Add cmd to pipeline", cmd)
-			transation.Put([]byte(pid+"_"+cmd.Path), cmd.Body)
-			transation.Put([]byte("status_" + pid), make([]byte, 0))
+			transation.Put([]byte(pid + "_" + cmd.Path), cmd.Body)
+			transation.Put(statusPidKey, make([]byte, 0))
 			pipeline = append(pipeline, cmd)
 		}
 	}
@@ -233,6 +235,7 @@ func (s *zexServer) Pipeline(stream zex.Zex_PipelineServer) error {
 func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, error) {
 	grpclog.Printf("subscribe uuid %s", pid.ID)
 
+	pidStatusKey := []byte(statusPrefix + pid.ID)
 	// add timeout
 	// FIXME add timeout parameter to function Subscribe(ctx context.Context, pid *zex.Pid, timeout time)
 	ctxTimeout, cancel := context.WithTimeout(context.Background(), s.defaultTimeout)
@@ -240,7 +243,6 @@ func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, er
 
 	if s.isExistsPid(pid.ID) {
 		// If pid exists, need check status error or invoke
-		pidStatusKey := []byte("status_" + pid.ID)
 		for {
 			// Add sleep for polling
 			value, err := s.DB.Get(pidStatusKey, nil)
@@ -291,6 +293,7 @@ func (s *zexServer) runPipeline(pid string) {
 	var (
 		ctx, cancel = context.WithCancel(context.Background())
 		pipeline    []zex.Cmd
+		statusPidKey = []byte(statusPrefix + pid)
 	)
 
 	// create batch transaction
@@ -298,6 +301,7 @@ func (s *zexServer) runPipeline(pid string) {
 
 	// iterate to leveldb
 	iter := s.DB.GetIterator(pid, "")
+	transationDel.Delete(statusPidKey)
 	for iter.Next() {
 		key := iter.Key()
 		strKey := string(key)
@@ -341,6 +345,7 @@ func (s *zexServer) runPipeline(pid string) {
 
 	grpclog.Printf("create %d goroutines -> callCmd... wait errors or success... %s", lengthPipiline, pid)
 	// wait done or cancel chan
+
 	for err := range errC {
 		lengthPipiline--
 
@@ -348,7 +353,7 @@ func (s *zexServer) runPipeline(pid string) {
 		if err != nil {
 			grpclog.Printf("command was failed by id %s: %s", pid, err)
 			// Update status if incorrect request
-			s.DB.Put([]byte("status_"+pid), []byte(err.Error()), nil)
+			s.DB.Put(statusPidKey, []byte(err.Error()), nil)
 			// If one of this fail, all failed
 			cancel()
 			return

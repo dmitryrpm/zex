@@ -278,7 +278,7 @@ func TestSubscribeUnits(t *testing.T) {
 				impl.DB.Put([]byte(str), []byte(cmd.Body), nil)
 			}
 			if len(tc.pipeline) > 0 {
-				impl.DB.Put([]byte("status_" + tc.pid), tc.status, nil)
+				impl.DB.Put([]byte(statusPrefix + tc.pid), tc.status, nil)
 			}
 
 			ctx, _ := context.WithTimeout(context.Background(), tc.cancelTimeout)
