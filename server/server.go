@@ -27,8 +27,8 @@ type Invoker func(ctx context.Context, method string, args, reply interface{}, c
 type Dialer func (target string, opts ...grpc.DialOption) (*grpc.ClientConn, error)
 
 
-//const defaultTimeout = 3 * time.Second,
-//const defaultLoopTimeout = 200 * time.Microsecond
+const defaultTimeout = 3 * time.Second
+const defaultLoopTimeout = 200 * time.Microsecond
 
 
 // New MOCK constructor for Tests
@@ -43,8 +43,8 @@ func NewMock(invoker Invoker, DB storage.Database, dialer Dialer) *zexServer {
 		Invoke:           invoker,
 		DB:               DB,
 		Dial:             dialer,
-		defaultTimeout:        3 * time.Second,
-		defaultLoopTimeout:    200 * time.Microsecond,
+		defaultTimeout:        defaultTimeout,
+		defaultLoopTimeout:   defaultLoopTimeout,
 	}
 }
 
@@ -65,8 +65,8 @@ func New(DB storage.Database) *zexServer {
 		// DB link
 		DB:               DB,
 		Dial:             grpc.Dial,
-		defaultTimeout:        3 * time.Second,
-		defaultLoopTimeout:    200 * time.Microsecond,
+		defaultTimeout:        defaultTimeout,
+		defaultLoopTimeout:    defaultLoopTimeout,
 	}
 }
 
