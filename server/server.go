@@ -248,7 +248,7 @@ func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, er
 			value, err := s.DB.Get(pidStatusKey, nil)
 			if s.DB.IsErrNotFound(err) {
 				grpclog.Println("subscribe return answer with status nil, all pipeline done correct")
-				return &zex.Empty{}, err
+				return &zex.Empty{}, nil
 			}
 
 			if len(string(value)) != 0 {

@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"io"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
@@ -27,7 +26,7 @@ func main() {
 
 	client := zex.NewZexClient(conn)
 
-	grpclog.Printf("Start send pipeline task to in Zex")
+	grpclog.Printf("start send pipeline task -> Zex")
 	stream, err := client.Pipeline(context.Background())
 	if err != nil {
 		grpclog.Fatalf("%v.Pipeline(_) = _, %v", client, err)
@@ -57,26 +56,24 @@ func main() {
 	stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/b.B/CallA", body1})
 	stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/b.B/CallB", body2})
 	stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/b.B/CallC", body3})
-
 	stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/c.C/CallA", body1})
 	stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/c.C/CallB", body2})
 	stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/c.C/CallC", body3})
 
 	//stream.Send(&zex.Cmd{zex.CmdType_INVOKE, "/d.D/CallA", body3})
-
+	grpclog.Println("all cmd sended, close stream")
 	pid, err := stream.CloseAndRecv()
-	if err == io.EOF {
-		grpclog.Printf("close stream")
-	} else if err != nil {
+	if err != nil {
 		grpclog.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
 		return
 	}
-	grpclog.Printf("Pipeline close: %v", pid)
+	grpclog.Printf("get id: %v", pid)
+	grpclog.Println("doing subscribe...")
 
 	_, strErr := client.Subscribe(context.Background(), pid)
 	if strErr != nil {
-		grpclog.Printf("Pipeline done with error: %s", strErr)
+		grpclog.Printf("pipeline done with error: %s", strErr)
 	} else {
-		grpclog.Printf("Pipeline done correct %s", strErr)
+		grpclog.Printf("pipeline done correct without errors")
 	}
 }
