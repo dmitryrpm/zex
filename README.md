@@ -28,7 +28,7 @@ sudo mv protoc3/bin/protoc /usr/bin/protoc
 protoc --go_out=plugins=grpc:. *.proto
 ```
 
-### Install forego (options)
+#### Install forego (options)
 ```shell
 wget https://bin.equinox.io/c/ekMN3bCZFUn/forego-stable-linux-amd64.tgz
 sudo tar xvf forego-stable-linux-amd64.tgz -C /usr/local/bin
@@ -42,7 +42,8 @@ make requires
 # run zex service
 make run_zex
 
-# run service A
+# run with forego or 
+# make run_a ... etc
 forego start
 
 # run client
