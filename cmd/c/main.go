@@ -20,7 +20,7 @@ var (
 func main() {
 	flag.Parse()
 
-	grpclog.Println("starting local service in ", serverAddr)
+	grpclog.Printf("starting local service: %s", *serverAddr)
 	listener, err := net.Listen("tcp", *serverAddr)
 	if err != nil {
 		grpclog.Fatalf("failed to listen: %v", err)

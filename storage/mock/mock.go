@@ -5,7 +5,6 @@ import (
 	"github.com/dmitryrpm/zex/storage"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"errors"
-	"google.golang.org/grpc/grpclog"
 )
 
 // ---------------------------
@@ -79,7 +78,6 @@ func (t *levelDBTransactionMock) Put(k []byte, v []byte) {
 }
 
 func (t *levelDBTransactionMock) Delete(k []byte) {
-	grpclog.Println("delete ", string(k))
 	for i, cmd := range t.pipeline {
 		if cmd.Path == string(k) {
 			t.pipeline = t.pipeline[:i+copy(t.pipeline[i:], t.pipeline[i+1:])]

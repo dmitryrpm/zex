@@ -322,7 +322,6 @@ func (s *zexServer) runPipeline(pid string) {
 			body}
 
 		pipeline = append(pipeline, cmd)
-		grpclog.Printf("%s", pipeline)
 
 		transationDel.Delete(key)
 	}
