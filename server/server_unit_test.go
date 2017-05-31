@@ -68,11 +68,7 @@ func (m *mockInvoker) Invoke(ctx context.Context, method string, args, reply int
 }
 
 func (m *mockInvoker) Dial(target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
-	var (
-		err error
-	)
-	err = m.err
-	return &grpc.ClientConn{}, err
+	return &grpc.ClientConn{}, m.err
 }
 
 type MockDbLevel struct {

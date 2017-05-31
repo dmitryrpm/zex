@@ -26,10 +26,6 @@ import (
 type Invoker func(ctx context.Context, method string, args, reply interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) error
 type Dialer func(target string, opts ...grpc.DialOption) (*grpc.ClientConn, error)
 
-const defaultTimeout = 3 * time.Second
-const defaultLoopTimeout = 200 * time.Microsecond
-const statusPrefix = "ST_"
-
 type zexOptions func(*zexServer)
 
 func WithMockerParams(invoker Invoker, dialer Dialer) zexOptions {
@@ -38,6 +34,12 @@ func WithMockerParams(invoker Invoker, dialer Dialer) zexOptions {
 		srv.Dial = dialer
 	}
 }
+
+
+const defaultTimeout = 3 * time.Second
+const defaultLoopTimeout = 200 * time.Microsecond
+const statusPrefix = "ST_"
+
 
 // New constructor
 func New(DB storage.Database, opts ...zexOptions) *zexServer {
@@ -309,7 +311,7 @@ func (s *zexServer) runPipeline(pid string) {
 		value := iter.Value()
 
 		// bad
-		//body := value
+		// body := value
 
 		// good
 		body := make([]byte, len(value))
