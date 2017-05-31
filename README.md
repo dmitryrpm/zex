@@ -43,7 +43,7 @@ make requires
 make run_zex
 
 # run service A
-make run_a
+forego start
 
 # run client
 make run_client
