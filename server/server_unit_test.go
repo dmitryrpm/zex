@@ -170,7 +170,7 @@ func TestRunPipelineUnits(t *testing.T) {
 
 			// example for show how work with options
 			storageMock, _ := mock.NewMock("test")
-			impl := NewMock(m.Invoke, storageMock, m.Dial)
+			impl := New(storageMock, WithMockerParams(m.Invoke, m.Dial))
 			impl.PathToServices = tc.setPathToServices
 			impl.RegisterServices = tc.setRegisterServices
 
@@ -270,7 +270,7 @@ func TestSubscribeUnits(t *testing.T) {
 		t.Run(tc.desc, func(tt *testing.T) {
 			m := &mockInvoker{}
 			storageMock, _ := mock.NewMock("test")
-			impl := NewMock(m.Invoke, storageMock, m.Dial)
+			impl := New(storageMock, WithMockerParams(m.Invoke, m.Dial))
 			impl.defaultLoopTimeout = 20 * time.Microsecond
 			impl.defaultTimeout = tc.defaultTimeout
 			for _, cmd := range tc.pipeline {
@@ -320,7 +320,7 @@ func TestRegisterUnits(t *testing.T) {
 		t.Run("test registry services", func(tt *testing.T) {
 			m := &mockInvoker{}
 			storageMock, _ := mock.NewMock("test")
-			impl := NewMock(m.Invoke, storageMock, m.Dial)
+			impl := New(storageMock, WithMockerParams(m.Invoke, m.Dial))
 			_, errS := impl.Register(context.Background(), &tc.service)
 			if errS == nil && errS != tc.error ||
 				errS != nil && errS.Error() != tc.error.Error() {

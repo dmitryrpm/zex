@@ -30,27 +30,19 @@ const defaultTimeout = 3 * time.Second
 const defaultLoopTimeout = 200 * time.Microsecond
 const statusPrefix = "ST_"
 
-// New MOCK constructor for Tests
-func NewMock(invoker Invoker, DB storage.Database, dialer Dialer) *zexServer {
-	return &zexServer{
-		lockForRegger:    &sync.RWMutex{},
-		RegisterServices: make(map[string]*grpc.ClientConn),
+type zexOptions func(*zexServer)
 
-		lockForPather:  &sync.RWMutex{},
-		PathToServices: make(map[string][]string),
-
-		Invoke:             invoker,
-		DB:                 DB,
-		Dial:               dialer,
-		defaultTimeout:     defaultTimeout,
-		defaultLoopTimeout: defaultLoopTimeout,
+func WithMockerParams(invoker Invoker, dialer Dialer) zexOptions {
+	return func(srv *zexServer) {
+		srv.Invoke = invoker
+		srv.Dial = dialer
 	}
 }
 
 // New constructor
-func New(DB storage.Database) *zexServer {
+func New(DB storage.Database, opts ...zexOptions) *zexServer {
 
-	return &zexServer{
+	srv := &zexServer{
 		// Services connection maps A => [connect]
 		lockForRegger:    &sync.RWMutex{},
 		RegisterServices: make(map[string]*grpc.ClientConn),
@@ -59,13 +51,21 @@ func New(DB storage.Database) *zexServer {
 		lockForPather:  &sync.RWMutex{},
 		PathToServices: make(map[string][]string),
 		// Invocker link
-		Invoke: grpc.Invoke,
+		Invoke:             grpc.Invoke,
 		// DB link
 		DB:                 DB,
 		Dial:               grpc.Dial,
+		// default timeouts
 		defaultTimeout:     defaultTimeout,
 		defaultLoopTimeout: defaultLoopTimeout,
 	}
+
+	for _, opt := range opts {
+		opt(srv)
+	}
+
+	return srv
+
 }
 
 // zexServer structure

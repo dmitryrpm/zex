@@ -16,20 +16,26 @@ Task proxymanager for grpc services
 
 #### Install grpc
 
-```
+```shell
 curl -OL https://github.com/google/protobuf/releases/download/v3.2.0/protoc-3.2.0-linux-x86_64.zip
 unzip protoc-3.2.0-linux-x86_64.zip -d protoc3
 sudo mv protoc3/bin/protoc /usr/bin/protoc
 ```
 
 #### Compile grpc-protofiles
-```
+```shell
 # cd to proto dir
 protoc --go_out=plugins=grpc:. *.proto
 ```
 
-#### Run
+### Install forego (options)
+```shell
+wget https://bin.equinox.io/c/ekMN3bCZFUn/forego-stable-linux-amd64.tgz
+sudo tar xvf forego-stable-linux-amd64.tgz -C /usr/local/bin
 ```
+
+#### Run
+```shell
 # install all requires
 make requires
 
@@ -45,7 +51,7 @@ make run_client
 ```
 
 #### Run tests
-```
+```shell
 make run test
 ```
 
