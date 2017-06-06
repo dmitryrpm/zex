@@ -238,10 +238,7 @@ func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, er
 	grpclog.Printf("subscribe uuid %s", pid.ID)
 
 	pidStatusKey := []byte(statusPrefix + pid.ID)
-	// add timeout
-	// FIXME add timeout parameter to function Subscribe(ctx context.Context, pid *zex.Pid, timeout time)
-	ctxTimeout, cancel := context.WithTimeout(context.Background(), s.defaultTimeout)
-	defer cancel()
+	timeout := time.After(s.defaultTimeout)
 
 	if s.isExistsPid(pid.ID) {
 		// If pid exists, need check status error or invoke
@@ -262,7 +259,7 @@ func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, er
 			case <-ctx.Done():
 				grpclog.Printf("contect canceled, return error")
 				return &zex.Empty{}, errors.New("context cancel")
-			case <-ctxTimeout.Done():
+			case <-timeout:
 				grpclog.Printf("timeout, more when %s return error", s.defaultTimeout)
 				return &zex.Empty{}, errors.New("timeout")
 			default:
