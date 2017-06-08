@@ -113,10 +113,15 @@ func (s *zexServer) Register(ctx context.Context, service *zex.Service) (*zex.Em
 		return nil, err
 	}
 
+	// add to RegisterServices
+	s.lockForRegger.Lock()
+	s.RegisterServices[serviceKey] = conn
+	s.lockForRegger.Unlock()
+
 	// get services info
-	c := rpb.NewServerReflectionClient(conn)
+	reflectionClient := rpb.NewServerReflectionClient(conn)
 	grpclog.Printf("do info request")
-	informer, err := c.ServerReflectionInfo(ctx)
+	informer, err := reflectionClient.ServerReflectionInfo(ctx)
 	if err != nil {
 		grpclog.Printf("did not informer: %v", err)
 		return nil, err
@@ -176,11 +181,6 @@ func (s *zexServer) Register(ctx context.Context, service *zex.Service) (*zex.Em
 
 		}
 	}
-
-	// Add to RegisterServices with locks
-	s.lockForRegger.Lock()
-	s.RegisterServices[serviceKey] = conn
-	s.lockForRegger.Unlock()
 
 	grpclog.Printf("Add services to map with key %s successed", serviceKey)
 	return &zex.Empty{}, nil
