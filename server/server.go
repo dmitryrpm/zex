@@ -236,52 +236,33 @@ func (s *zexServer) Pipeline(stream zex.Zex_PipelineServer) error {
 // Subscribe services interface impl
 func (s *zexServer) Subscribe(ctx context.Context, pid *zex.Pid) (*zex.Empty, error) {
 	grpclog.Printf("subscribe uuid %s", pid.ID)
-
 	pidStatusKey := []byte(statusPrefix + pid.ID)
 	timeout := time.After(s.defaultTimeout)
+	for {
+		// Add sleep for polling
+		value, err := s.DB.Get(pidStatusKey, nil)
+		if s.DB.IsErrNotFound(err) {
+			grpclog.Println("subscribe return answer with status nil, all pipeline done correct")
+			return &zex.Empty{}, nil
+		}
 
-	if s.isExistsPid(pid.ID) {
-		// If pid exists, need check status error or invoke
-		for {
+		if len(string(value)) != 0 {
+			grpclog.Printf("subscribe return answer with error: %s", string(string(value)))
+			return &zex.Empty{}, errors.New(string(value))
+		}
+		// check timeout and context cancel
+		select {
+		case <-ctx.Done():
+			grpclog.Printf("contect canceled, return error")
+			return &zex.Empty{}, errors.New("context cancel")
+		case <-timeout:
+			grpclog.Printf("timeout, more when %s return error", s.defaultTimeout)
+			return &zex.Empty{}, errors.New("timeout")
+		default:
 			// Add sleep for polling
-			value, err := s.DB.Get(pidStatusKey, nil)
-			if s.DB.IsErrNotFound(err) {
-				grpclog.Println("subscribe return answer with status nil, all pipeline done correct")
-				return &zex.Empty{}, nil
-			}
-
-			if len(string(value)) != 0 {
-				grpclog.Printf("subscribe return answer with error: %s", string(string(value)))
-				return &zex.Empty{}, errors.New(string(value))
-			}
-			// check timeout and context cancel
-			select {
-			case <-ctx.Done():
-				grpclog.Printf("contect canceled, return error")
-				return &zex.Empty{}, errors.New("context cancel")
-			case <-timeout:
-				grpclog.Printf("timeout, more when %s return error", s.defaultTimeout)
-				return &zex.Empty{}, errors.New("timeout")
-			default:
-				// Add sleep for polling
-				time.Sleep(s.defaultLoopTimeout)
-			}
+			time.Sleep(s.defaultLoopTimeout)
 		}
 	}
-	// If pid does not exist, this is done correct
-	return &zex.Empty{}, nil
-}
-
-func (s *zexServer) isExistsPid(pid string) bool {
-	iter := s.DB.GetIterator(pid, "")
-	for iter.Next() {
-		key := iter.Key()
-		if strings.Contains(string(key), pid) {
-			return true
-		}
-	}
-	iter.Release()
-	return false
 }
 
 // Run pipeline
